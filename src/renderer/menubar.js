@@ -121,11 +121,16 @@ function initMenuBar() {
   onAction('ma-theme-cycle', () => cycleTheme());
 
   // Tools menu
-  onAction('ma-tool-protect', () => showProtect());
-  onAction('ma-tool-convert', () => setAppMode('converter'));
+  onAction('ma-tool-text', () => setTextMode(!state.textMode));
+  onAction('ma-tool-draw', () => setDrawMode(!state.drawMode));
+  onAction('ma-tool-whiteout', () => setWhiteoutMode(!state.whiteoutMode));
   onAction('ma-tool-note', () => setNoteMode(!state.noteMode));
   onAction('ma-tool-highlight', () => addMarkup('highlight', '#ffe14d'));
   onAction('ma-tool-underline', () => addMarkup('underline', '#d62828'));
+  onAction('ma-tool-add-page', () => { if (state.active) insertBlankPage(state.active); });
+  onAction('ma-tool-del-page', () => { if (state.active) deleteActivePage(state.active); });
+  onAction('ma-tool-protect', () => showProtect());
+  onAction('ma-tool-convert', () => setAppMode('converter'));
   onAction('ma-settings', () => showSettings());
 
   // Help menu

@@ -3,6 +3,7 @@
 // Developed by Prof. Dattaraj S. Vidyasagar & Prof. Yash D. Vidyasagar.
 const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
 const { protectPdf } = require('./pdf-protect');
+const { convertFileToPdf } = require('./converter-engine');
 const path = require('path');
 const fs = require('fs');
 
@@ -96,15 +97,34 @@ ipcMain.handle('open-dialog', async () => {
 
 ipcMain.handle('open-converter-dialog', async () => {
   const r = await dialog.showOpenDialog(win, {
-    title: 'Select files to convert', properties: ['openFile', 'multiSelections'],
+    title: 'Select documents, presentations, spreadsheets or images to convert',
+    properties: ['openFile', 'multiSelections'],
     filters: [
-      { name: 'Supported files (PDF & Images)', extensions: ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif'] },
-      { name: 'PDF documents', extensions: ['pdf'] },
-      { name: 'Images (JPG, PNG, WebP, BMP, GIF)', extensions: ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif'] },
-      { name: 'All files', extensions: ['*'] },
+      {
+        name: 'All Supported Files (*.pdf, *.docx, *.xlsx, *.pptx, *.txt, *.md, images)',
+        extensions: [
+          'pdf',
+          'docx', 'doc', 'rtf', 'dotx',
+          'xlsx', 'xls', 'csv', 'tsv', 'xlsm', 'xlsb',
+          'pptx', 'ppt', 'ppsx', 'pps',
+          'txt', 'md', 'markdown', 'html', 'htm', 'json', 'xml', 'log',
+          'jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif', 'svg'
+        ]
+      },
+      { name: 'Word Documents (*.docx, *.doc, *.rtf)', extensions: ['docx', 'doc', 'rtf', 'dotx'] },
+      { name: 'Excel Spreadsheets (*.xlsx, *.xls, *.csv)', extensions: ['xlsx', 'xls', 'csv', 'tsv', 'xlsm', 'xlsb'] },
+      { name: 'PowerPoint Presentations (*.pptx, *.ppt)', extensions: ['pptx', 'ppt', 'ppsx', 'pps'] },
+      { name: 'Text & Markdown Files (*.txt, *.md, *.html, *.json)', extensions: ['txt', 'md', 'markdown', 'html', 'htm', 'json', 'xml', 'log'] },
+      { name: 'Images (*.jpg, *.png, *.webp, *.bmp, *.gif, *.svg)', extensions: ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif', 'svg'] },
+      { name: 'PDF Documents (*.pdf)', extensions: ['pdf'] },
+      { name: 'All files (*.*)', extensions: ['*'] },
     ],
   });
   return r.canceled ? [] : r.filePaths;
+});
+
+ipcMain.handle('convert-to-pdf', async (_e, filePath) => {
+  return await convertFileToPdf(filePath);
 });
 
 ipcMain.handle('read-file', async (_e, p) => {

@@ -5,16 +5,20 @@
 const BTN_ICONS = {
   'btn-pane': 'pane', 'btn-open': 'open', 'btn-recent': 'recent', 'btn-prev': 'up', 'btn-next': 'down',
   'btn-zoomout': 'minus', 'btn-zoomin': 'plus', 'btn-rotate': 'rotate', 'btn-viewmode': 'continuous',
-  'btn-search': 'search', 'btn-hl': 'hl', 'btn-ul': 'ul', 'btn-note': 'note', 'btn-theme': 'theme',
+  'btn-search': 'search', 'btn-text': 'text', 'btn-draw': 'draw', 'btn-whiteout': 'whiteout',
+  'btn-hl': 'hl', 'btn-ul': 'ul', 'btn-note': 'note', 'btn-theme': 'theme',
   'btn-present': 'present', 'btn-print': 'print', 'btn-save': 'save', 'btn-protect': 'protect', 'btn-settings': 'settings', 'btn-about': 'about',
   'search-prev': 'up', 'search-next': 'down', 'search-close': 'close',
 };
-for (const [id, name] of Object.entries(BTN_ICONS)) $('#' + id).innerHTML = icon(name);
+for (const [id, name] of Object.entries(BTN_ICONS)) {
+  const el = $('#' + id);
+  if (el) el.innerHTML = icon(name);
+}
 
 function updateToolbar() {
   const t = state.active, has = !!t;
-  ['btn-prev', 'btn-next', 'btn-zoomout', 'btn-zoomin', 'btn-rotate', 'btn-viewmode', 'btn-search', 'btn-hl', 'btn-ul', 'btn-note', 'btn-present', 'btn-print', 'btn-save', 'btn-protect']
-    .forEach(id => { $('#' + id).disabled = !has; });
+  ['btn-prev', 'btn-next', 'btn-zoomout', 'btn-zoomin', 'btn-rotate', 'btn-viewmode', 'btn-search', 'btn-text', 'btn-draw', 'btn-whiteout', 'btn-hl', 'btn-ul', 'btn-note', 'btn-present', 'btn-print', 'btn-save', 'btn-protect']
+    .forEach(id => { const el = $('#' + id); if (el) el.disabled = !has; });
   $('#page-input').disabled = !has; $('#zoom-select').disabled = !has;
   if (!has) { $('#page-input').value = ''; $('#page-total').textContent = '/ 0'; return; }
   const inp = $('#page-input');
@@ -34,6 +38,7 @@ async function pickFiles() { const f = await vra.openDialog(); if (f.length) ope
 $('#btn-open').onclick = pickFiles;
 $('#btn-newtab').onclick = pickFiles;
 $('#welcome-open').onclick = pickFiles;
+if ($('#welcome-create')) $('#welcome-create').onclick = () => setAppMode('converter');
 $('#btn-recent').onclick = (e) => showMenu(e.currentTarget, state.recent.map(p => ({ label: baseName(p), sub: p, action: () => openFile(p) })));
 $('#btn-pane').onclick = () => togglePane();
 $('#btn-prev').onclick = withTab(prevPage);
@@ -43,6 +48,9 @@ $('#btn-zoomout').onclick = withTab(t => zoomStep(t, -1));
 $('#btn-rotate').onclick = withTab(t => rotate(t, 90));
 $('#btn-viewmode').onclick = withTab(t => setViewMode(t, t.viewMode === 'continuous' ? 'single' : 'continuous'));
 $('#btn-search').onclick = () => { const t = state.active; if (!t) return; if (t.search && t.search.open) closeSearch(); else openSearch(); };
+$('#btn-text').onclick = () => setTextMode(!state.textMode);
+$('#btn-draw').onclick = () => setDrawMode(!state.drawMode);
+$('#btn-whiteout').onclick = () => setWhiteoutMode(!state.whiteoutMode);
 $('#btn-hl').onclick = () => addMarkup('highlight', '#ffe14d');
 $('#btn-ul').onclick = () => addMarkup('underline', '#d62828');
 $('#btn-note').onclick = () => setNoteMode(!state.noteMode);
@@ -118,7 +126,7 @@ function handleEscape(e) {
   if (state.presentation) { exitPresentation(); return; }
   const t = state.active;
   if (t && t.search && t.search.open) { closeSearch(); return; }
-  if (state.noteMode) { setNoteMode(false); return; }
+  if (state.noteMode || state.textMode || state.drawMode || state.whiteoutMode) { clearEditModes(); return; }
   const a = document.activeElement;
   if (a && a.matches && a.matches('input, textarea, select')) { a.blur(); return; }
   if (state.settings.escClose) vra.closeApp();
@@ -188,19 +196,19 @@ document.addEventListener('drop', (e) => {
   e.preventDefault(); dragDepth = 0; $('#dropzone').hidden = true;
   const isConverter = $('#converter-view') && !$('#converter-view').hidden;
   const allPaths = Array.from(e.dataTransfer.files).map(f => vra.pathForFile(f)).filter(Boolean);
+  if (!allPaths.length) return;
+
   if (isConverter) {
-    const supported = allPaths.filter(p => /\.(pdf|jpe?g|png|webp|bmp|gif)$/i.test(p));
-    if (supported.length) addFilesToConverter(supported);
-    else toast('Please drop PDF documents or images.');
+    addFilesToConverter(allPaths);
     return;
   }
   const pdfPaths = allPaths.filter(p => /\.pdf$/i.test(p));
-  if (pdfPaths.length) openFiles(pdfPaths);
-  else if (allPaths.some(p => /\.(jpe?g|png|webp|bmp|gif)$/i.test(p))) {
-    setAppMode('converter');
-    addFilesToConverter(allPaths.filter(p => /\.(pdf|jpe?g|png|webp|bmp|gif)$/i.test(p)));
+  if (pdfPaths.length) {
+    openFiles(pdfPaths);
   } else {
-    toast('Please drop PDF files or images.');
+    // If user drops Word, Excel, PowerPoint, Text, Markdown or Images onto the Viewer:
+    setAppMode('converter');
+    addFilesToConverter(allPaths);
   }
 });
 
@@ -216,6 +224,7 @@ document.addEventListener('drop', (e) => {
   applyTheme(); renderSidebar(); renderRecent(); updateToolbar();
   initConverter();
   initMenuBar();
+  setupDrawingHandlers();
   vra.onOpenFiles((files) => openFiles(files));
   const files = await vra.initialFiles();
   if (files.length) openFiles(files);

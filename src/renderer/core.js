@@ -30,6 +30,9 @@ const ICONS = {
   continuous: '<rect x="6" y="3" width="12" height="8" rx="1"/><rect x="6" y="13" width="12" height="8" rx="1"/>',
   single: '<rect x="6" y="3" width="12" height="18" rx="1"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+  text: '<path d="M4 7V4h16v3M9 20h6M12 4v16"/>',
+  draw: '<path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18z"/>',
+  whiteout: '<rect x="3" y="3" width="18" height="18" rx="2" stroke-dasharray="3 3"/><line x1="3" y1="3" x2="21" y2="21"/>',
   hl: '<path d="M14 4l6 6-8 8H6v-6z"/><path d="M4 21h16"/>',
   ul: '<path d="M7 4v7a5 5 0 0 0 10 0V4"/><path d="M5 20h14"/>',
   note: '<path d="M4 4h16v12l-5 5H4z"/><path d="M15 21v-5h5"/>',
@@ -113,9 +116,25 @@ async function openFiles(paths) { for (const p of paths) await openFile(p); }
 async function openFile(p) {
   const existing = state.tabs.find(t => t.path === p);
   if (existing) { switchTab(existing); return; }
+
+  const ext = p.split('.').pop().toLowerCase();
+  const isPdf = ext === 'pdf';
   let bytes;
-  try { bytes = await vra.readFile(p); }
-  catch (e) { toast('Could not open "' + baseName(p) + '". The file may have been moved or deleted.'); removeRecent(p); return; }
+
+  if (!isPdf) {
+    toast(`Converting ${baseName(p)} to PDF…`, 60000);
+    try {
+      bytes = await vra.convertToPdf(p);
+      $('#toast').hidden = true;
+    } catch (err) {
+      toast(`Could not convert ${baseName(p)}: ${err.message || err}`);
+      return;
+    }
+  } else {
+    try { bytes = await vra.readFile(p); }
+    catch (e) { toast('Could not open "' + baseName(p) + '". The file may have been moved or deleted.'); removeRecent(p); return; }
+  }
+
   const info = await vra.fileInfo(p);
   const task = pdfjsLib.getDocument({
     data: bytes,
@@ -131,17 +150,17 @@ async function openFile(p) {
     if (e && e.name !== 'PasswordException' && !/destroyed/i.test(e.message || '')) toast('Could not open "' + baseName(p) + '": ' + (e.message || e));
     return;
   }
-  const tab = createTab(p, pdf, info);
+  const tab = createTab(p, pdf, info, bytes);
   state.tabs.push(tab);
   addRecent(p);
   switchTab(tab);
 }
 
-function createTab(path, pdf, info) {
+function createTab(path, pdf, info, pdfBytes) {
   const key = path + '|' + (info.size || 0);
   if (!state.annots[key]) state.annots[key] = {};
   const tab = {
-    id: state.nextId++, path, name: baseName(path), key, pdf, numPages: pdf.numPages,
+    id: state.nextId++, path, name: baseName(path), key, pdf, pdfBytes, numPages: pdf.numPages,
     page: 1, zoomMode: 'fit-width', scale: 1, rotation: 0, viewMode: state.settings.viewMode,
     recs: [], annots: state.annots[key], search: null, outline: undefined,
     scroller: null, pagesEl: null, thumbsEl: null, outlineEl: null, savedScroll: 0, tops: [], laidOut: false,

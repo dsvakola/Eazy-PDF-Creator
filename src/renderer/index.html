@@ -62,12 +62,18 @@
 
     <div class="menu-item" data-menu="tools">Tools
       <div class="menu-dropdown" id="dropdown-tools">
-        <div class="menu-action" id="ma-tool-protect"><span>🔒 Protect PDF (Password &amp; Permissions)…</span><kbd>Ctrl+Shift+S</kbd></div>
-        <div class="menu-action" id="ma-tool-convert"><span>🔄 Open Batch Converter Studio…</span></div>
-        <div class="menu-sep"></div>
+        <div class="menu-action" id="ma-tool-text"><span>✎ Add Text Box to PDF</span><kbd>T</kbd></div>
+        <div class="menu-action" id="ma-tool-draw"><span>✍ Freehand Pen / Signature</span><kbd>P</kbd></div>
+        <div class="menu-action" id="ma-tool-whiteout"><span>⬜ Whiteout / Redaction Tool</span><kbd>W</kbd></div>
         <div class="menu-action" id="ma-tool-note"><span>✎ Add Sticky Note</span></div>
         <div class="menu-action" id="ma-tool-highlight"><span>Highlight Selected Text</span></div>
         <div class="menu-action" id="ma-tool-underline"><span>Underline Selected Text</span></div>
+        <div class="menu-sep"></div>
+        <div class="menu-action" id="ma-tool-add-page"><span>➕ Insert Blank Page</span></div>
+        <div class="menu-action" id="ma-tool-del-page"><span>🗑️ Delete Current Page</span></div>
+        <div class="menu-sep"></div>
+        <div class="menu-action" id="ma-tool-protect"><span>🔒 Protect PDF (Password &amp; Permissions)…</span><kbd>Ctrl+Shift+S</kbd></div>
+        <div class="menu-action" id="ma-tool-convert"><span>🔄 Open Universal Converter Studio…</span></div>
         <div class="menu-sep"></div>
         <div class="menu-action" id="ma-settings"><span>Settings…</span></div>
       </div>
@@ -122,6 +128,9 @@
     <button id="btn-viewmode" class="tb" title="Continuous / single page view"></button>
     <span class="sep"></span>
     <button id="btn-search" class="tb" title="Search (Ctrl+F)"></button>
+    <button id="btn-text" class="tb" title="Add Text / Type on PDF (T)"></button>
+    <button id="btn-draw" class="tb" title="Freehand Pen / Draw on PDF (P)"></button>
+    <button id="btn-whiteout" class="tb" title="Whiteout / Redaction Tool (W)"></button>
     <button id="btn-hl" class="tb" title="Highlight selected text"></button>
     <button id="btn-ul" class="tb" title="Underline selected text"></button>
     <button id="btn-note" class="tb" title="Add a sticky note (click on the page)"></button>
@@ -161,9 +170,12 @@
       <div id="welcome">
         <img src="../../assets/logo.png" alt="Vidyasagar Academy" class="welcome-logo">
         <h1>Eazy PDF Creator</h1>
-        <p class="tagline">Fast, modern &amp; 100% lossless PDF Creator &amp; Viewer from Vidyasagar Academy</p>
-        <button id="welcome-open" class="primary">Open a PDF file</button>
-        <p class="hint">or drag and drop a PDF here</p>
+        <p class="tagline">Fast, modern &amp; 100% lossless PDF Creator, Viewer &amp; Editor from Vidyasagar Academy</p>
+        <div class="welcome-actions">
+          <button id="welcome-create" class="primary welcome-btn-main">➕ Create New PDF</button>
+          <button id="welcome-open" class="secondary welcome-btn-main">📂 Open a PDF file</button>
+        </div>
+        <p class="hint">Convert Word, Excel, PowerPoint, Text &amp; Images into PDF, or open &amp; edit an existing PDF</p>
         <div id="recent-list"></div>
       </div>
     </div>
@@ -174,23 +186,23 @@
     <div class="conv-container">
       <header class="conv-header">
         <h1>Eazy PDF Creator</h1>
-        <p class="conv-tagline">100% Lossless creation, merging, and protection for documents &amp; images</p>
+        <p class="conv-tagline">100% Lossless creation, merging, and protection for all documents &amp; images</p>
       </header>
 
       <!-- Step 1: Drop Area -->
       <div id="conv-drop-area" class="conv-dropzone">
         <div class="conv-drop-content">
           <div class="conv-drop-icon">📄 ➔ 📕</div>
-          <h3>Select or Drop files here</h3>
-          <p class="conv-drop-hint">Combine PDFs and images into a single clean PDF without losing quality</p>
-          <button id="conv-browse-btn" class="primary conv-btn-select">Select Files</button>
+          <h3>Select or Drop any file here to convert to PDF</h3>
+          <p class="conv-drop-hint">Convert Word, Excel, PowerPoint, Text, Markdown and Images into high-quality PDFs</p>
+          <button id="conv-browse-btn" class="primary conv-btn-select">Select Files to Convert</button>
           <div class="conv-formats">
-            <span>PDF</span>
-            <span>JPG / JPEG</span>
-            <span>PNG</span>
-            <span>WebP</span>
-            <span>BMP</span>
-            <span>GIF</span>
+            <span>Word (.docx, .doc)</span>
+            <span>Excel (.xlsx, .csv)</span>
+            <span>PowerPoint (.pptx)</span>
+            <span>PDF (.pdf)</span>
+            <span>Text &amp; Markdown</span>
+            <span>Images</span>
           </div>
         </div>
       </div>

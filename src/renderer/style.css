@@ -126,10 +126,81 @@ body.notemode .page .textLayer { cursor: crosshair; }
 #welcome { position: absolute; inset: 0; overflow: auto; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; }
 .welcome-logo { width: 150px; height: 150px; margin-top: 10px; }
 #welcome h1 { margin: 14px 0 2px; font-size: 28px; color: var(--accent); }
-.tagline { color: var(--muted); margin: 0 0 22px; }
+.tagline { color: var(--muted); margin: 0 0 16px; text-align: center; max-width: 650px; font-size: 14px; }
+.welcome-actions { display: flex; gap: 14px; margin: 10px 0 6px; }
+.welcome-btn-main { padding: 12px 26px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 8px; }
+.welcome-btn-main.primary { background: var(--accent); color: #fff; border: none; box-shadow: 0 4px 14px rgba(0, 102, 204, 0.28); }
+.welcome-btn-main.primary:hover { background: #0052a3; transform: translateY(-1px); }
+.welcome-btn-main.secondary { background: var(--chrome2); color: var(--text); border: 1.5px solid var(--border); }
+.welcome-btn-main.secondary:hover { background: var(--hover); border-color: var(--accent); }
 .primary { background: var(--navy); color: #fff; border: none; border-radius: 8px; padding: 11px 26px; font-size: 15px; font-weight: 600; }
 .primary:hover { background: var(--navy-d); }
-.hint { color: var(--muted); margin: 10px 0 24px; }
+.hint { color: var(--muted); margin: 10px 0 24px; text-align: center; max-width: 580px; font-size: 13px; }
+
+/* ----- PDF Editing Styles ----- */
+body.textmode .page { cursor: text; }
+body.drawmode .page { cursor: crosshair; }
+body.whiteoutmode .page { cursor: crosshair; }
+
+.pdf-added-text {
+  position: absolute;
+  pointer-events: auto;
+  cursor: pointer;
+  user-select: none;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-weight: 500;
+  padding: 2px 6px;
+  border: 1px dashed transparent;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+  white-space: pre-wrap;
+  z-index: 5;
+}
+.pdf-added-text:hover {
+  border-color: var(--accent);
+  background: #ffffff;
+}
+
+.pdf-whiteout-block {
+  position: absolute;
+  pointer-events: auto;
+  cursor: pointer;
+  background: #ffffff;
+  border: 1px dashed rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
+  z-index: 4;
+}
+.pdf-whiteout-block:hover {
+  border-color: #d62828;
+}
+
+.draw-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.thumbs-tools-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 4px;
+  padding: 8px 6px;
+  background: var(--chrome2);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.thumbs-tools-bar button {
+  font-size: 11px;
+  padding: 4px 7px;
+  font-weight: 600;
+}
 #recent-list { width: min(640px, 100%); }
 #recent-list h3 { margin: 0 0 6px; font-size: 13px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
 .ritem { padding: 8px 10px; border-radius: 6px; cursor: pointer; display: flex; flex-direction: column; }
@@ -471,6 +542,22 @@ body.presentation .pages { padding: 0; min-height: 100%; justify-content: center
   background: #e8f5e9;
   color: #2e7d32;
 }
+.badge-word {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+.badge-excel {
+  background: #dcfce7;
+  color: #15803d;
+}
+.badge-ppt {
+  background: #ffedd5;
+  color: #c2410c;
+}
+.badge-text {
+  background: #f3e8ff;
+  color: #7e22ce;
+}
 body.theme-dark .badge-pdf {
   background: #4a1515;
   color: #ff8a80;
@@ -478,6 +565,22 @@ body.theme-dark .badge-pdf {
 body.theme-dark .badge-img {
   background: #1b381e;
   color: #a5d6a7;
+}
+body.theme-dark .badge-word {
+  background: #082f49;
+  color: #7dd3fc;
+}
+body.theme-dark .badge-excel {
+  background: #052e16;
+  color: #86efac;
+}
+body.theme-dark .badge-ppt {
+  background: #431407;
+  color: #fdba74;
+}
+body.theme-dark .badge-text {
+  background: #3b0764;
+  color: #d8b4fe;
 }
 .conv-rot-badge {
   font-size: 11px;

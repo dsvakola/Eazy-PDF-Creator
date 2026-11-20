@@ -132,12 +132,22 @@ const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 
 
 function normRect(r) { return [Math.min(r[0], r[2]), Math.min(r[1], r[3]), Math.abs(r[2] - r[0]), Math.abs(r[3] - r[1])]; }
 
+let activeDrawing = null;
+
 function drawAnnotations(tab, rec) {
   if (!rec.annotDiv || !rec.viewport) return;
   rec.annotDiv.innerHTML = ''; rec.noteDiv.innerHTML = '';
   const list = tab.annots[rec.num] || [];
   const vp = rec.viewport;
-  for (const a of list) {
+
+  const allItems = [...list];
+  if (activeDrawing && activeDrawing.tab === tab && activeDrawing.pageNum === rec.num) {
+    allItems.push(activeDrawing);
+  }
+
+  let svgEl = null;
+
+  for (const a of allItems) {
     if (a.type === 'note') {
       const [vx, vy] = vp.convertToViewportPoint(a.pt[0], a.pt[1]);
       const d = document.createElement('div'); d.className = 'note';
@@ -146,6 +156,60 @@ function drawAnnotations(tab, rec) {
       d.dataset.id = a.id;
       d.onclick = (e) => { e.stopPropagation(); editNote(tab, rec.num, a); };
       rec.noteDiv.appendChild(d);
+    } else if (a.type === 'text') {
+      const [vx, vy] = vp.convertToViewportPoint(a.pt[0], a.pt[1]);
+      const d = document.createElement('div');
+      d.className = 'pdf-added-text';
+      d.style.left = clamp(vx, 0, vp.width - 40) + 'px';
+      d.style.top = clamp(vy, 0, vp.height - 30) + 'px';
+      d.style.color = a.color || '#000000';
+      d.style.fontSize = Math.round((a.fontSize || 14) * (vp.scale || 1)) + 'px';
+      d.textContent = a.text;
+      d.title = 'Click to edit or delete text';
+      d.onclick = async (e) => {
+        e.stopPropagation();
+        const r = await textEditModal(a.text, a.fontSize, a.color, true);
+        if (r === null) return;
+        if (r === '\u0000DELETE') { deleteAnnot(tab, a.id); return; }
+        a.text = r.text;
+        a.fontSize = r.fontSize;
+        a.color = r.color;
+        redrawAnnotPage(tab, rec.num);
+        saveAnnots();
+      };
+      rec.noteDiv.appendChild(d);
+    } else if (a.type === 'whiteout') {
+      const [x, y, w, h] = normRect(vp.convertToViewportRectangle(a.rect));
+      const d = document.createElement('div');
+      d.className = 'pdf-whiteout-block';
+      d.style.left = x + 'px';
+      d.style.top = y + 'px';
+      d.style.width = w + 'px';
+      d.style.height = h + 'px';
+      d.title = 'Whiteout block (Click to remove)';
+      d.onclick = (e) => {
+        e.stopPropagation();
+        if (confirm('Delete this whiteout block?')) deleteAnnot(tab, a.id);
+      };
+      rec.noteDiv.appendChild(d);
+    } else if (a.type === 'draw') {
+      if (!svgEl) {
+        svgEl = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svgEl.setAttribute('class', 'draw-svg');
+        rec.annotDiv.appendChild(svgEl);
+      }
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      const dStr = a.points.map((p, idx) => {
+        const [vx, vy] = vp.convertToViewportPoint(p[0], p[1]);
+        return (idx === 0 ? 'M' : 'L') + `${vx.toFixed(1)} ${vy.toFixed(1)}`;
+      }).join(' ');
+      path.setAttribute('d', dStr);
+      path.setAttribute('stroke', a.color || '#d62828');
+      path.setAttribute('stroke-width', String(Math.max(1.5, (a.strokeWidth || 2.5) * (vp.scale || 1))));
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke-linecap', 'round');
+      path.setAttribute('stroke-linejoin', 'round');
+      svgEl.appendChild(path);
     } else {
       for (const r of a.rects) {
         const [x, y, w, h] = normRect(vp.convertToViewportRectangle(r));
@@ -258,17 +322,144 @@ function deleteAnnot(tab, id) {
   saveAnnots(); renderNotesPanel();
 }
 
+function clearEditModes() {
+  state.noteMode = false;
+  state.textMode = false;
+  state.drawMode = false;
+  state.whiteoutMode = false;
+  document.body.classList.remove('notemode', 'textmode', 'drawmode', 'whiteoutmode');
+  const btnNote = $('#btn-note'); if (btnNote) btnNote.classList.remove('on');
+  const btnText = $('#btn-text'); if (btnText) btnText.classList.remove('on');
+  const btnDraw = $('#btn-draw'); if (btnDraw) btnDraw.classList.remove('on');
+  const btnWhite = $('#btn-whiteout'); if (btnWhite) btnWhite.classList.remove('on');
+}
+
 function setNoteMode(on) {
-  state.noteMode = on;
-  document.body.classList.toggle('notemode', on);
-  $('#btn-note').classList.toggle('on', on);
-  if (on) toast('Click on the page where you want the note.', 2500);
+  clearEditModes();
+  if (on) {
+    state.noteMode = true;
+    document.body.classList.add('notemode');
+    $('#btn-note')?.classList.add('on');
+    toast('Click on the page where you want the sticky note.', 2500);
+  }
+}
+
+function setTextMode(on) {
+  clearEditModes();
+  if (on) {
+    state.textMode = true;
+    document.body.classList.add('textmode');
+    $('#btn-text')?.classList.add('on');
+    toast('Click anywhere on the page to type text onto the PDF.', 2500);
+  }
+}
+
+function setDrawMode(on) {
+  clearEditModes();
+  if (on) {
+    state.drawMode = true;
+    document.body.classList.add('drawmode');
+    $('#btn-draw')?.classList.add('on');
+    toast('Click and drag on any page to draw or sign with the pen.', 2500);
+  }
+}
+
+function setWhiteoutMode(on) {
+  clearEditModes();
+  if (on) {
+    state.whiteoutMode = true;
+    document.body.classList.add('whiteoutmode');
+    $('#btn-whiteout')?.classList.add('on');
+    toast('Click anywhere on the page to place a whiteout redaction box.', 2500);
+  }
+}
+
+async function addTextAtViewport(tab, rec, vx, vy) {
+  const [px, py] = rec.viewport.convertToPdfPoint(vx, vy);
+  const res = await textEditModal('', 14, '#000000');
+  if (!res || !res.text || !res.text.trim()) return;
+  (tab.annots[rec.num] = tab.annots[rec.num] || []).push({
+    id: uid(),
+    type: 'text',
+    pt: [px, py],
+    text: res.text.trim(),
+    fontSize: res.fontSize || 14,
+    color: res.color || '#000000',
+  });
+  redrawAnnotPage(tab, rec.num);
+  saveAnnots();
+  renderNotesPanel();
+}
+
+function textEditModal(initialText, initialSize = 14, initialColor = '#000000', canDelete = false) {
+  const p = showModal(`<h2>${canDelete ? 'Edit Text' : 'Add Text to PDF'}</h2>
+    <div style="margin-bottom:12px; display:flex; gap:10px; align-items:center;">
+      <label>Font Size:</label>
+      <select id="text-edit-size" style="padding:4px 8px; border-radius:4px; border:1px solid var(--border);">
+        <option value="10">10 pt</option>
+        <option value="12">12 pt</option>
+        <option value="14" selected>14 pt</option>
+        <option value="18">18 pt</option>
+        <option value="24">24 pt</option>
+        <option value="32">32 pt</option>
+        <option value="48">48 pt</option>
+      </select>
+      <label style="margin-left:8px;">Color:</label>
+      <select id="text-edit-color" style="padding:4px 8px; border-radius:4px; border:1px solid var(--border);">
+        <option value="#000000" selected>Black</option>
+        <option value="#d62828">Red</option>
+        <option value="#0066cc">Blue</option>
+        <option value="#15803d">Green</option>
+        <option value="#ffffff">White</option>
+      </select>
+    </div>
+    <textarea id="text-edit-body" placeholder="Type text here..." style="width:100%; height:90px; padding:8px; border-radius:6px; border:1px solid var(--border); font-size:14px;"></textarea>
+    <div class="mbtns">
+      ${canDelete ? '<button id="text-edit-del" class="danger">Delete</button>' : ''}
+      <button id="text-edit-cancel">Cancel</button>
+      <button id="text-edit-ok" class="primary">Apply</button>
+    </div>`);
+
+  setTimeout(() => {
+    const ta = $('#text-edit-body');
+    const sz = $('#text-edit-size');
+    const clr = $('#text-edit-color');
+    if (ta) {
+      ta.value = initialText || '';
+      ta.focus();
+    }
+    if (sz && initialSize) sz.value = String(initialSize);
+    if (clr && initialColor) clr.value = initialColor;
+
+    $('#text-edit-ok').onclick = () => closeModal({
+      text: ta.value,
+      fontSize: parseInt(sz.value, 10) || 14,
+      color: clr.value || '#000000',
+    });
+    $('#text-edit-cancel').onclick = () => closeModal(null);
+    if (canDelete) $('#text-edit-del').onclick = () => closeModal('\u0000DELETE');
+  }, 0);
+
+  return p;
+}
+
+async function addWhiteoutAtViewport(tab, rec, vx, vy) {
+  const [px, py] = rec.viewport.convertToPdfPoint(vx, vy);
+  (tab.annots[rec.num] = tab.annots[rec.num] || []).push({
+    id: uid(),
+    type: 'whiteout',
+    rect: [px, py - 20, px + 150, py + 8],
+    color: '#ffffff',
+  });
+  redrawAnnotPage(tab, rec.num);
+  saveAnnots();
+  toast('Whiteout block added. Click on it to remove.', 2500);
 }
 
 // ----- selection popup -----
 function hideSelPop() { $('#selpop').hidden = true; }
 function onViewerMouseUp(tab, e) {
-  if (state.noteMode || state.presentation) return;
+  if (state.noteMode || state.textMode || state.drawMode || state.whiteoutMode || state.presentation) return;
   setTimeout(() => {
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed || !sel.rangeCount) { hideSelPop(); return; }
@@ -290,13 +481,99 @@ function onViewerClick(tab, e) {
     if (x < 0.3) prevPage(tab); else nextPage(tab);
     return;
   }
+  if (state.textMode) {
+    const pageEl = e.target.closest('.page');
+    if (!pageEl) return;
+    const rec = tab.recs[+pageEl.dataset.page - 1];
+    if (!rec || !rec.viewport) return;
+    const b = pageEl.getBoundingClientRect();
+    setTextMode(false);
+    addTextAtViewport(tab, rec, e.clientX - b.left, e.clientY - b.top);
+    return;
+  }
+  if (state.whiteoutMode) {
+    const pageEl = e.target.closest('.page');
+    if (!pageEl) return;
+    const rec = tab.recs[+pageEl.dataset.page - 1];
+    if (!rec || !rec.viewport) return;
+    const b = pageEl.getBoundingClientRect();
+    setWhiteoutMode(false);
+    addWhiteoutAtViewport(tab, rec, e.clientX - b.left, e.clientY - b.top);
+    return;
+  }
   if (!state.noteMode) return;
   const pageEl = e.target.closest('.page'); if (!pageEl || e.target.closest('.note')) return;
   const rec = tab.recs[+pageEl.dataset.page - 1];
-  if (!rec.viewport) return;
+  if (!rec || !rec.viewport) return;
   const b = pageEl.getBoundingClientRect();
   setNoteMode(false);
   addNoteAtViewport(tab, rec, e.clientX - b.left, e.clientY - b.top);
+}
+
+function setupDrawingHandlers() {
+  const viewerWrap = $('#viewer-wrap');
+  if (!viewerWrap) return;
+
+  viewerWrap.addEventListener('pointerdown', (e) => {
+    if (!state.drawMode || !state.active) return;
+    const pageEl = e.target.closest('.page');
+    if (!pageEl) return;
+    const tab = state.active;
+    const rec = tab.recs[+pageEl.dataset.page - 1];
+    if (!rec || !rec.viewport) return;
+
+    const b = pageEl.getBoundingClientRect();
+    const vx = e.clientX - b.left;
+    const vy = e.clientY - b.top;
+    const [px, py] = rec.viewport.convertToPdfPoint(vx, vy);
+
+    activeDrawing = {
+      id: uid(),
+      type: 'draw',
+      tab,
+      pageNum: rec.num,
+      points: [[px, py]],
+      color: '#d62828',
+      strokeWidth: 2.5,
+    };
+    pageEl.setPointerCapture(e.pointerId);
+  });
+
+  viewerWrap.addEventListener('pointermove', (e) => {
+    if (!activeDrawing) return;
+    const pageEl = e.target.closest('.page');
+    if (!pageEl || +pageEl.dataset.page !== activeDrawing.pageNum) return;
+    const rec = activeDrawing.tab.recs[activeDrawing.pageNum - 1];
+    if (!rec || !rec.viewport) return;
+
+    const b = pageEl.getBoundingClientRect();
+    const vx = e.clientX - b.left;
+    const vy = e.clientY - b.top;
+    const [px, py] = rec.viewport.convertToPdfPoint(vx, vy);
+    activeDrawing.points.push([px, py]);
+
+    redrawAnnotPage(activeDrawing.tab, activeDrawing.pageNum);
+  });
+
+  const finishDrawing = () => {
+    if (!activeDrawing) return;
+    if (activeDrawing.points.length > 1) {
+      (activeDrawing.tab.annots[activeDrawing.pageNum] = activeDrawing.tab.annots[activeDrawing.pageNum] || []).push({
+        id: activeDrawing.id,
+        type: 'draw',
+        points: activeDrawing.points,
+        color: activeDrawing.color,
+        strokeWidth: activeDrawing.strokeWidth,
+      });
+      saveAnnots();
+    }
+    const cur = activeDrawing;
+    activeDrawing = null;
+    redrawAnnotPage(cur.tab, cur.pageNum);
+  };
+
+  viewerWrap.addEventListener('pointerup', finishDrawing);
+  viewerWrap.addEventListener('pointercancel', finishDrawing);
 }
 
 // =====================================================================
@@ -329,6 +606,20 @@ function renderSidebar() {
 
 function buildThumbs(tab) {
   const wrap = document.createElement('div');
+
+  const toolsBar = document.createElement('div');
+  toolsBar.className = 'thumbs-tools-bar';
+  toolsBar.innerHTML = `
+    <button id="thumb-btn-add" class="tb-btn small" title="Insert blank page after current page">➕ Add</button>
+    <button id="thumb-btn-rot" class="tb-btn small" title="Rotate current page 90°">↻ Rotate</button>
+    <button id="thumb-btn-del" class="tb-btn small danger" title="Delete current page">🗑️ Delete</button>
+  `;
+  wrap.appendChild(toolsBar);
+
+  toolsBar.querySelector('#thumb-btn-add').onclick = () => insertBlankPage(tab);
+  toolsBar.querySelector('#thumb-btn-rot').onclick = () => rotateActivePage(tab, 90);
+  toolsBar.querySelector('#thumb-btn-del').onclick = () => deleteActivePage(tab);
+
   const io = new IntersectionObserver((entries) => {
     for (const en of entries) if (en.isIntersecting) { const el = en.target; io.unobserve(el); renderThumb(tab, el); }
   }, { root: $('#panel-thumbs'), rootMargin: '300px' });
@@ -473,9 +764,11 @@ async function printDocument() {
 const hexRgb = (h) => { const n = parseInt(h.slice(1), 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; };
 
 async function buildAnnotatedPdf(tab) {
-  const bytes = await vra.readFile(tab.path);
-  const { PDFDocument, rgb, BlendMode, PDFHexString } = PDFLib;
+  const bytes = tab.pdfBytes || await vra.readFile(tab.path);
+  const { PDFDocument, rgb, BlendMode, PDFHexString, StandardFonts } = PDFLib;
   const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
+  const helvetica = await doc.embedFont(StandardFonts.Helvetica);
+
   for (const pn of Object.keys(tab.annots)) {
     const page = doc.getPage(+pn - 1);
     for (const a of tab.annots[pn]) {
@@ -484,6 +777,38 @@ async function buildAnnotatedPdf(tab) {
         for (const q of a.rects) page.drawRectangle({ x: q[0], y: q[1], width: q[2] - q[0], height: q[3] - q[1], color: rgb(r, g, b), opacity: 0.5, blendMode: BlendMode.Multiply, borderWidth: 0 });
       } else if (a.type === 'underline') {
         for (const q of a.rects) page.drawLine({ start: { x: q[0], y: q[1] }, end: { x: q[2], y: q[1] }, thickness: 1.2, color: rgb(0.84, 0.16, 0.16) });
+      } else if (a.type === 'text') {
+        const [r, g, b] = hexRgb(a.color || '#000000');
+        page.drawText(a.text, {
+          x: a.pt[0],
+          y: a.pt[1],
+          size: a.fontSize || 14,
+          font: helvetica,
+          color: rgb(r, g, b),
+        });
+      } else if (a.type === 'whiteout') {
+        const minX = Math.min(a.rect[0], a.rect[2]);
+        const minY = Math.min(a.rect[1], a.rect[3]);
+        const w = Math.abs(a.rect[2] - a.rect[0]);
+        const h = Math.abs(a.rect[3] - a.rect[1]);
+        page.drawRectangle({
+          x: minX,
+          y: minY,
+          width: w,
+          height: h,
+          color: rgb(1, 1, 1),
+          borderWidth: 0,
+        });
+      } else if (a.type === 'draw') {
+        const [r, g, b] = hexRgb(a.color || '#d62828');
+        for (let i = 0; i < a.points.length - 1; i++) {
+          page.drawLine({
+            start: { x: a.points[i][0], y: a.points[i][1] },
+            end: { x: a.points[i+1][0], y: a.points[i+1][1] },
+            thickness: a.strokeWidth || 2.5,
+            color: rgb(r, g, b),
+          });
+        }
       } else {
         const [x, y] = a.pt;
         const dict = doc.context.obj({
@@ -495,6 +820,85 @@ async function buildAnnotatedPdf(tab) {
     }
   }
   return doc.save();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Page Organizing & Editing Operations
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function reloadTabBytes(tab, bytes) {
+  const task = pdfjsLib.getDocument({
+    data: bytes,
+    cMapUrl: new URL('lib/cmaps/', location.href).href, cMapPacked: true,
+    standardFontDataUrl: new URL('lib/standard_fonts/', location.href).href,
+  });
+  const pdf = await task.promise;
+  tab.pdf = pdf;
+  tab.numPages = pdf.numPages;
+  tab.page = Math.min(tab.page, tab.numPages);
+  tab.recs = [];
+  tab.scroller = null;
+  tab.pagesEl = null;
+  tab.thumbsEl = null;
+  tab.laidOut = false;
+  renderTabContent(tab);
+  updateToolbar();
+  renderSidebar();
+}
+
+async function deleteActivePage(tab) {
+  if (tab.numPages <= 1) {
+    toast('Cannot delete the only page in the document.');
+    return;
+  }
+  if (!confirm(`Are you sure you want to delete Page ${tab.page} of ${tab.numPages}?`)) return;
+  toast('Deleting page…', 5000);
+  try {
+    const { PDFDocument } = PDFLib;
+    const baseBytes = tab.pdfBytes || await vra.readFile(tab.path);
+    const doc = await PDFDocument.load(baseBytes, { ignoreEncryption: true });
+    doc.removePage(tab.page - 1);
+    const newBytes = await doc.save({ useObjectStreams: false });
+    tab.pdfBytes = newBytes;
+    await reloadTabBytes(tab, newBytes);
+    toast(`Page deleted. Document now has ${tab.numPages} pages.`, 2500);
+  } catch (err) {
+    toast('Error deleting page: ' + (err.message || err));
+  }
+}
+
+async function rotateActivePage(tab, deg = 90) {
+  toast('Rotating page…', 5000);
+  try {
+    const { PDFDocument, degrees } = PDFLib;
+    const baseBytes = tab.pdfBytes || await vra.readFile(tab.path);
+    const doc = await PDFDocument.load(baseBytes, { ignoreEncryption: true });
+    const p = doc.getPage(tab.page - 1);
+    const cur = p.getRotation().angle;
+    p.setRotation(degrees((cur + deg) % 360));
+    const newBytes = await doc.save({ useObjectStreams: false });
+    tab.pdfBytes = newBytes;
+    await reloadTabBytes(tab, newBytes);
+    toast(`Page ${tab.page} rotated.`, 2500);
+  } catch (err) {
+    toast('Error rotating page: ' + (err.message || err));
+  }
+}
+
+async function insertBlankPage(tab) {
+  toast('Inserting blank page…', 5000);
+  try {
+    const { PDFDocument } = PDFLib;
+    const baseBytes = tab.pdfBytes || await vra.readFile(tab.path);
+    const doc = await PDFDocument.load(baseBytes, { ignoreEncryption: true });
+    doc.insertPage(tab.page, [595.28, 841.89]); // Standard A4 points
+    const newBytes = await doc.save({ useObjectStreams: false });
+    tab.pdfBytes = newBytes;
+    await reloadTabBytes(tab, newBytes);
+    toast(`Blank page inserted at page ${tab.page + 1}.`, 2500);
+  } catch (err) {
+    toast('Error inserting page: ' + (err.message || err));
+  }
 }
 
 async function saveAnnotatedCopy() {

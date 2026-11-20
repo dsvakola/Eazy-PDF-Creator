@@ -62,19 +62,32 @@ function parsePageRange(rangeStr, totalPages) {
 async function addFilesToConverter(filePaths) {
   if (!filePaths || !filePaths.length) return;
   const statusEl = $('#conv-status');
-  if (statusEl) statusEl.textContent = 'Inspecting files…';
+  if (statusEl) statusEl.textContent = 'Inspecting & preparing files…';
 
   for (const p of filePaths) {
     const ext = p.split('.').pop().toLowerCase();
     const isPdf = ext === 'pdf';
-    const isImg = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif'].includes(ext);
-    if (!isPdf && !isImg) continue;
+    const isImg = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'gif', 'svg'].includes(ext);
+    const isWord = ['docx', 'doc', 'dotx', 'dot', 'rtf'].includes(ext);
+    const isExcel = ['xlsx', 'xls', 'csv', 'tsv', 'xlsm', 'xlsb', 'ods'].includes(ext);
+    const isPpt = ['pptx', 'ppt', 'ppsx', 'pps'].includes(ext);
+    const isText = ['txt', 'md', 'markdown', 'html', 'htm', 'json', 'xml', 'log'].includes(ext);
+
+    let fileType = isPdf ? 'pdf' : isImg ? 'image' : isWord ? 'word' : isExcel ? 'excel' : isPpt ? 'powerpoint' : isText ? 'text' : 'doc';
+    const name = p.split(/[\\/]/).pop();
 
     try {
-      const bytes = await vra.readFile(p);
+      let bytes;
       const info = await vra.fileInfo(p);
-      const name = p.split(/[\\/]/).pop();
       const id = 'conv-' + (convIdCounter++);
+
+      if (!isPdf && !isImg) {
+        toast(`Converting ${name} to PDF…`, 60000);
+        bytes = await vra.convertToPdf(p);
+        $('#toast').hidden = true;
+      } else {
+        bytes = await vra.readFile(p);
+      }
 
       const item = {
         id,
@@ -82,7 +95,7 @@ async function addFilesToConverter(filePaths) {
         name,
         size: info.size || bytes.byteLength,
         ext,
-        type: isPdf ? 'pdf' : 'image',
+        type: fileType,
         bytes,
         pageCount: 1,
         dimensions: null,
@@ -91,7 +104,7 @@ async function addFilesToConverter(filePaths) {
         thumbUrl: null,
       };
 
-      if (isPdf) {
+      if (isPdf || !isImg) {
         try {
           const doc = await PDFLib.PDFDocument.load(bytes, { ignoreEncryption: true });
           item.pageCount = doc.getPageCount();
@@ -106,11 +119,10 @@ async function addFilesToConverter(filePaths) {
           await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
           item.thumbUrl = canvas.toDataURL('image/jpeg', 0.85);
         } catch (e) {
-          console.warn('PDF inspection fallback:', e);
+          console.warn('Document inspection thumbnail fallback:', e);
         }
       } else if (isImg) {
-        // Thumbnail for images
-        const mime = ext === 'png' ? 'image/png' : 'image/jpeg';
+        const mime = ext === 'png' ? 'image/png' : ext === 'svg' ? 'image/svg+xml' : 'image/jpeg';
         const blob = new Blob([bytes], { type: mime });
         item.thumbUrl = URL.createObjectURL(blob);
       }
@@ -118,7 +130,7 @@ async function addFilesToConverter(filePaths) {
       converterState.files.push(item);
     } catch (err) {
       console.error('Error loading file for converter:', p, err);
-      toast(`Could not load "${p.split(/[\\/]/).pop()}": ${err.message || err}`);
+      toast(`Could not convert "${name}": ${err.message || err}`);
     }
   }
 
@@ -162,9 +174,20 @@ function renderConverterQueue() {
       ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
       : `${Math.round(file.size / 1024)} KB`;
 
-    const typeBadge = file.type === 'pdf'
-      ? `<span class="conv-badge badge-pdf">PDF · ${file.pageCount} page${file.pageCount === 1 ? '' : 's'}</span>`
-      : `<span class="conv-badge badge-img">${file.ext.toUpperCase()} image</span>`;
+    let typeBadge = '';
+    if (file.type === 'pdf') {
+      typeBadge = `<span class="conv-badge badge-pdf">📕 PDF · ${file.pageCount} page${file.pageCount === 1 ? '' : 's'}</span>`;
+    } else if (file.type === 'word') {
+      typeBadge = `<span class="conv-badge badge-word">📘 Word · ${file.pageCount} page${file.pageCount === 1 ? '' : 's'}</span>`;
+    } else if (file.type === 'excel') {
+      typeBadge = `<span class="conv-badge badge-excel">📊 Excel · ${file.pageCount} page${file.pageCount === 1 ? '' : 's'}</span>`;
+    } else if (file.type === 'powerpoint') {
+      typeBadge = `<span class="conv-badge badge-ppt">📙 PowerPoint · ${file.pageCount} slide${file.pageCount === 1 ? '' : 's'}</span>`;
+    } else if (file.type === 'text') {
+      typeBadge = `<span class="conv-badge badge-text">📝 Text/MD · ${file.pageCount} page${file.pageCount === 1 ? '' : 's'}</span>`;
+    } else {
+      typeBadge = `<span class="conv-badge badge-img">🖼️ ${file.ext.toUpperCase()} image</span>`;
+    }
 
     card.innerHTML = `
       <div class="conv-card-left">
@@ -181,7 +204,7 @@ function renderConverterQueue() {
       </div>
 
       <div class="conv-card-right">
-        ${file.type === 'pdf' ? `
+        ${file.type !== 'image' ? `
           <div class="conv-range-box" title="e.g. 1-5, 8 or 'all'">
             <label>Pages:</label>
             <input type="text" class="conv-range-input" value="${esc(file.pageRange)}" placeholder="all">
@@ -348,9 +371,9 @@ async function runConversion() {
       const fileProgress = Math.round(10 + (fIdx / totalFiles) * 70);
       setProgress(fileProgress, `Processing ${esc(item.name)} (${fIdx + 1}/${totalFiles})…`);
 
-      if (item.type === 'pdf') {
+      if (item.type !== 'image') {
         // ── LOSSLESS NATIVE VECTOR PDF COPYING ────────────────────────────────
-        // Loads source PDF and copies vector glyphs, fonts, and streams directly
+        // Loads source PDF / converted document and copies vector glyphs, fonts, and streams directly
         const srcDoc = await PDFLib.PDFDocument.load(item.bytes, { ignoreEncryption: true });
         const totalSrcPages = srcDoc.getPageCount();
         const pageIndices = parsePageRange(item.pageRange, totalSrcPages);
