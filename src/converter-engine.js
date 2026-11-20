@@ -6,8 +6,10 @@ const os = require('os');
 const { execFile } = require('child_process');
 const mammoth = require('mammoth');
 const XLSX = require('xlsx');
-const { marked } = require('marked');
+const MarkdownIt = require('markdown-it');
 const JSZip = require('jszip');
+
+const mdParser = new MarkdownIt({ html: true, linkify: true, typographer: true });
 
 /**
  * Universal Converter Engine for Eazy PDF Creator
@@ -259,7 +261,7 @@ async function convertPptxToHtml(filePath) {
 // Markdown (.md) -> HTML
 async function convertMarkdownToHtml(filePath) {
   const content = await fs.promises.readFile(filePath, 'utf8');
-  const bodyHtml = marked.parse(content);
+  const bodyHtml = mdParser.render(content);
   return `<div class="markdown-body">${bodyHtml}</div>`;
 }
 
