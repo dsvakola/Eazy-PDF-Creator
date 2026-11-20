@@ -4,7 +4,7 @@ contextBridge.exposeInMainWorld('vra', {
   initialFiles: () => ipcRenderer.invoke('initial-files'),
   openDialog: () => ipcRenderer.invoke('open-dialog'),
   openConverterDialog: () => ipcRenderer.invoke('open-converter-dialog'),
-  convertToPdf: (p) => ipcRenderer.invoke('convert-to-pdf', p),
+  convertToPdf: (p, opts) => ipcRenderer.invoke('convert-to-pdf', p, opts),
   readFile: (p) => ipcRenderer.invoke('read-file', p),
   fileInfo: (p) => ipcRenderer.invoke('file-info', p),
   storeGet: (name) => ipcRenderer.invoke('store-get', name),

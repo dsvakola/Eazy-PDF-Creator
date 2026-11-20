@@ -143,16 +143,19 @@ async function convertDocxToHtml(filePath) {
 }
 
 // Excel (.xlsx, .xls, .csv, .tsv) -> HTML
-async function convertExcelToHtml(filePath) {
+async function convertExcelToHtml(filePath, options = {}) {
   const buf = await fs.promises.readFile(filePath);
   const workbook = XLSX.read(buf, { type: 'buffer' });
   let html = `<div class="spreadsheet-container">`;
 
-  for (const sheetName of workbook.SheetNames) {
+  const sheetNames = (options.excelSheets === 'first') ? [workbook.SheetNames[0]] : workbook.SheetNames;
+  const showGrid = options.excelGridlines !== false;
+
+  for (const sheetName of sheetNames) {
     const sheet = workbook.Sheets[sheetName];
     const sheetHtml = XLSX.utils.sheet_to_html(sheet, { header: '', footer: '' });
     html += `
-    <div class="sheet-section">
+    <div class="sheet-section ${showGrid ? 'grid-borders' : ''}">
       <h2 class="sheet-title">${escapeHtml(sheetName)}</h2>
       <div class="table-wrap">
         ${sheetHtml}
@@ -419,7 +422,7 @@ async function renderHtmlToPdf(htmlBody, title = 'Document', { isLandscape = fal
 // 4. Master Converter Function: Convert any file to PDF bytes
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function convertFileToPdf(filePath) {
+async function convertFileToPdf(filePath, options = {}) {
   const ext = path.extname(filePath).toLowerCase().replace('.', '');
   const title = path.basename(filePath);
 
@@ -442,7 +445,7 @@ async function convertFileToPdf(filePath) {
   if (['docx', 'doc', 'dotx', 'dot', 'rtf'].includes(ext)) {
     html = await convertDocxToHtml(filePath);
   } else if (['xlsx', 'xls', 'xlsm', 'xlsb', 'csv', 'tsv', 'ods'].includes(ext)) {
-    html = await convertExcelToHtml(filePath);
+    html = await convertExcelToHtml(filePath, options);
     isLandscape = true; // Spreadsheets look much better in landscape
   } else if (['pptx', 'ppt', 'ppsx', 'pps'].includes(ext)) {
     html = await convertPptxToHtml(filePath);

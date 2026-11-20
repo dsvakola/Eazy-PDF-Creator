@@ -16,7 +16,7 @@
 - **Multi-File Queue**: Drag and drop multiple PDFs and images (JPG, PNG, WebP, BMP, GIF).
 - **Page Ranges & Rotation**: Specify custom page ranges (e.g. `1-5, 8, 10-end`) and rotate individual pages before creating.
 
-### 2. 🔒 Comprehensive Security & Protection (online2pdf Style)
+### 2. 🔒 Comprehensive Security & Protection (Enterprise Grade)
 - **Create password for opening**: Restrict opening to authorized users.
 - **Lock printing**: Prevent unauthorized printing.
 - **Lock copying**: Protect content from being selected or copied.

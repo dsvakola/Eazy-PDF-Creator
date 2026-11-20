@@ -1020,7 +1020,7 @@ async function showAbout() {
 
 
 // =====================================================================
-//  PROTECT PDF  (password + permission locks — online2pdf.com style)
+//  PROTECT PDF  (password + permission locks — enterprise-grade encryption)
 // =====================================================================
 
 function showProtect() {

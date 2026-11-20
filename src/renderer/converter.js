@@ -4,8 +4,8 @@
 
 const converterState = {
   files: [],       // Array of file items
-  activeTab: 'protection', // 'protection' | 'layout' | 'quality'
-  mergeMode: 'merge',      // 'merge' | 'individual'
+  activeTab: 'compression', // 'compression' | 'view' | 'images' | 'protection' | 'headerfooter' | 'excel' | 'layout' | 'optimization'
+  mergeMode: 'merge',
   converting: false,
 };
 
@@ -33,6 +33,97 @@ async function imageToPngBytes(uint8Array, mime) {
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+// ── Image Quality, DPI Downsampling & Color Mode Processing ──────────────────
+async function processImageWithOptions(bytes, ext, { qualityLevel = 8, dpi = 300, colorMode = 'color', retainOriginal = false, autocontrast = false }) {
+  if (retainOriginal) {
+    return { bytes, ext };
+  }
+
+  // Quality 1..10 maps to JPEG encoder quality 0.22..0.98
+  const qMap = { 1: 0.22, 2: 0.32, 3: 0.42, 4: 0.52, 5: 0.62, 6: 0.72, 7: 0.80, 8: 0.88, 9: 0.94, 10: 0.98 };
+  const quality = qMap[qualityLevel] || 0.88;
+
+  return new Promise((resolve) => {
+    const mime = ext === 'png' ? 'image/png' : ext === 'svg' ? 'image/svg+xml' : 'image/jpeg';
+    const blob = new Blob([bytes], { type: mime });
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let w = img.naturalWidth || img.width;
+      let h = img.naturalHeight || img.height;
+
+      // Downsample if image resolution exceeds target DPI on A4 dimensions (8.27in x 11.69in)
+      const maxW = Math.round(8.27 * dpi);
+      const maxH = Math.round(11.69 * dpi);
+      if (w > maxW || h > maxH) {
+        const ratio = Math.min(maxW / w, maxH / h);
+        w = Math.max(1, Math.round(w * ratio));
+        h = Math.max(1, Math.round(h * ratio));
+      }
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, w, h);
+      ctx.drawImage(img, 0, 0, w, h);
+
+      // Color / Grayscale / Monochrome filter
+      if (colorMode === 'gray' || colorMode === 'mono') {
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const d = imgData.data;
+        const isMono = colorMode === 'mono';
+        for (let i = 0; i < d.length; i += 4) {
+          const lum = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+          const val = isMono ? (lum >= 128 ? 255 : 0) : lum;
+          d[i] = val;
+          d[i + 1] = val;
+          d[i + 2] = val;
+        }
+        ctx.putImageData(imgData, 0, 0);
+      }
+
+      // Auto-contrast enhancement for scanned pages / faint text
+      if (autocontrast) {
+        const imgData = ctx.getImageData(0, 0, w, h);
+        const d = imgData.data;
+        let minLum = 255, maxLum = 0;
+        for (let i = 0; i < d.length; i += 4) {
+          const lum = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+          if (lum < minLum) minLum = lum;
+          if (lum > maxLum) maxLum = lum;
+        }
+        if (maxLum > minLum && (minLum > 10 || maxLum < 245)) {
+          const factor = 255 / (maxLum - minLum);
+          for (let i = 0; i < d.length; i += 4) {
+            d[i] = Math.min(255, Math.max(0, (d[i] - minLum) * factor));
+            d[i + 1] = Math.min(255, Math.max(0, (d[i + 1] - minLum) * factor));
+            d[i + 2] = Math.min(255, Math.max(0, (d[i + 2] - minLum) * factor));
+          }
+          ctx.putImageData(imgData, 0, 0);
+        }
+      }
+
+      canvas.toBlob((resBlob) => {
+        if (!resBlob) { resolve({ bytes, ext }); return; }
+        const reader = new FileReader();
+        reader.onload = () => resolve({ bytes: new Uint8Array(reader.result), ext: 'jpeg' });
+        reader.readAsArrayBuffer(resBlob);
+      }, 'image/jpeg', quality);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve({ bytes, ext });
+    };
+
+    img.src = url;
+  });
 }
 
 // ── Parse page range string (e.g. "1-5, 8, 10-end" or "all") ──────────────────
@@ -83,7 +174,9 @@ async function addFilesToConverter(filePaths) {
 
       if (!isPdf && !isImg) {
         toast(`Converting ${name} to PDF…`, 60000);
-        bytes = await vra.convertToPdf(p);
+        const xlSheets = $('#conv-xl-sheets')?.value || 'all';
+        const xlGrid = $('#conv-xl-gridlines')?.checked !== false;
+        bytes = await vra.convertToPdf(p, { excelSheets: xlSheets, excelGridlines: xlGrid });
         $('#toast').hidden = true;
       } else {
         bytes = await vra.readFile(p);
@@ -322,8 +415,26 @@ async function runConversion() {
   try {
     setProgress(5, 'Initializing PDF engine…');
 
-    // Options from UI
-    const layoutSize = $('#conv-opt-size')?.value || 'original'; // original | a4 | letter
+    // Compression & Quality options
+    const retainOriginal = $('#conv-opt-retain-orig')?.checked !== false;
+    const qualityLevel = parseInt($('#conv-opt-quality')?.value, 10) || 8;
+    const dpi = parseInt($('#conv-opt-dpi')?.value, 10) || 300;
+    const colorMode = $('#conv-opt-colormode')?.value || 'color';
+
+    // View options
+    const pageMode = $('#conv-view-pagemode')?.value || 'continuous';
+    const viewRotate = parseInt($('#conv-view-rotate')?.value, 10) || 0;
+
+    // Image options
+    const imgFit = $('#conv-img-fit')?.value || 'contain';
+    const imgBorder = $('#conv-img-border')?.value || 'none';
+
+    // Optimization options
+    const autocontrast = $('#conv-opt-autocontrast')?.checked || false;
+    const stripUnused = $('#conv-opt-strip-unused')?.checked !== false;
+
+    // Layout options
+    const layoutSize = $('#conv-opt-size')?.value || 'original'; // original | a4 | letter | legal | a3 | a5
     const layoutOrient = $('#conv-opt-orient')?.value || 'auto'; // auto | portrait | landscape
     const layoutMargin = parseFloat($('#conv-opt-margin')?.value || '0');
 
@@ -360,6 +471,9 @@ async function runConversion() {
     const PAGE_SIZES = {
       a4: [595.28, 841.89],
       letter: [612.0, 792.0],
+      legal: [612.0, 1008.0],
+      a3: [841.89, 1190.55],
+      a5: [419.53, 595.28],
     };
 
     // Create the master output PDF document
@@ -372,32 +486,92 @@ async function runConversion() {
       setProgress(fileProgress, `Processing ${esc(item.name)} (${fIdx + 1}/${totalFiles})…`);
 
       if (item.type !== 'image') {
-        // ── LOSSLESS NATIVE VECTOR PDF COPYING ────────────────────────────────
-        // Loads source PDF / converted document and copies vector glyphs, fonts, and streams directly
-        const srcDoc = await PDFLib.PDFDocument.load(item.bytes, { ignoreEncryption: true });
-        const totalSrcPages = srcDoc.getPageCount();
-        const pageIndices = parsePageRange(item.pageRange, totalSrcPages);
-        const copiedPages = await outDoc.copyPages(srcDoc, pageIndices);
+        if (!retainOriginal) {
+          // ── RECOMPRESS PDF PAGES AT SELECTED DPI & QUALITY ──
+          try {
+            const pdfjsTask = pdfjsLib.getDocument({ data: item.bytes.slice(0) });
+            const pdfDoc = await pdfjsTask.promise;
+            const totalSrcPages = pdfDoc.numPages;
+            const pageIndices = parsePageRange(item.pageRange, totalSrcPages);
+            const scale = Math.max(0.4, Math.min(3.5, dpi / 72));
 
-        for (const page of copiedPages) {
-          if (item.rotation) {
-            const currentRot = page.getRotation().angle;
-            page.setRotation(PDFLib.degrees((currentRot + item.rotation) % 360));
+            for (const pIdx of pageIndices) {
+              const pdfPage = await pdfDoc.getPage(pIdx + 1);
+              const vp = pdfPage.getViewport({ scale });
+              const canvas = document.createElement('canvas');
+              canvas.width = Math.floor(vp.width);
+              canvas.height = Math.floor(vp.height);
+              const ctx = canvas.getContext('2d');
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              await pdfPage.render({ canvasContext: ctx, viewport: vp }).promise;
+
+              if (colorMode === 'gray' || colorMode === 'mono' || autocontrast) {
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const d = imgData.data;
+                const isMono = colorMode === 'mono';
+                const applyGray = colorMode === 'gray' || isMono;
+                for (let i = 0; i < d.length; i += 4) {
+                  if (applyGray) {
+                    const lum = Math.round(0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]);
+                    const val = isMono ? (lum >= 128 ? 255 : 0) : lum;
+                    d[i] = val; d[i + 1] = val; d[i + 2] = val;
+                  }
+                }
+                ctx.putImageData(imgData, 0, 0);
+              }
+
+              const qMap = { 1: 0.22, 2: 0.32, 3: 0.42, 4: 0.52, 5: 0.62, 6: 0.72, 7: 0.80, 8: 0.88, 9: 0.94, 10: 0.98 };
+              const q = qMap[qualityLevel] || 0.88;
+              const blob = await new Promise(r => canvas.toBlob(r, 'image/jpeg', q));
+              const arrBuf = await blob.arrayBuffer();
+              const embeddedJpg = await outDoc.embedJpg(new Uint8Array(arrBuf));
+
+              const origVp = pdfPage.getViewport({ scale: 1.0 });
+              const page = outDoc.addPage([origVp.width, origVp.height]);
+              page.drawImage(embeddedJpg, { x: 0, y: 0, width: origVp.width, height: origVp.height });
+              if (item.rotation) {
+                const cur = page.getRotation().angle;
+                page.setRotation(PDFLib.degrees((cur + item.rotation) % 360));
+              }
+            }
+          } catch (pdfCompErr) {
+            console.warn('PDF recompression fallback:', pdfCompErr);
+            const srcDoc = await PDFLib.PDFDocument.load(item.bytes, { ignoreEncryption: true });
+            const totalSrcPages = srcDoc.getPageCount();
+            const pageIndices = parsePageRange(item.pageRange, totalSrcPages);
+            const copiedPages = await outDoc.copyPages(srcDoc, pageIndices);
+            for (const page of copiedPages) {
+              if (item.rotation) {
+                const cur = page.getRotation().angle;
+                page.setRotation(PDFLib.degrees((cur + item.rotation) % 360));
+              }
+              outDoc.addPage(page);
+            }
           }
-          outDoc.addPage(page);
+        } else {
+          // ── 100% BIT-FOR-BIT LOSSLESS VECTOR PDF COPYING ────────────
+          const srcDoc = await PDFLib.PDFDocument.load(item.bytes, { ignoreEncryption: true });
+          const totalSrcPages = srcDoc.getPageCount();
+          const pageIndices = parsePageRange(item.pageRange, totalSrcPages);
+          const copiedPages = await outDoc.copyPages(srcDoc, pageIndices);
+
+          for (const page of copiedPages) {
+            if (item.rotation) {
+              const currentRot = page.getRotation().angle;
+              page.setRotation(PDFLib.degrees((currentRot + item.rotation) % 360));
+            }
+            outDoc.addPage(page);
+          }
         }
       } else if (item.type === 'image') {
-        // ── LOSSLESS IMAGE EMBEDDING ──────────────────────────────────────────
-        // Native DCT for JPG, Flate for PNG (zero recompression artifacts)
+        // ── IMAGE PROCESSING WITH QUALITY & DPI DOWNSAMPLING ──
+        const processed = await processImageWithOptions(item.bytes, item.ext, { qualityLevel, dpi, colorMode, retainOriginal, autocontrast });
         let embeddedImg;
-        if (item.ext === 'jpg' || item.ext === 'jpeg') {
-          embeddedImg = await outDoc.embedJpg(item.bytes);
-        } else if (item.ext === 'png') {
-          embeddedImg = await outDoc.embedPng(item.bytes);
+        if (processed.ext === 'png') {
+          embeddedImg = await outDoc.embedPng(processed.bytes);
         } else {
-          // Fallback for WebP / BMP / GIF: canvas to lossless PNG bytes
-          const pngBytes = await imageToPngBytes(item.bytes, `image/${item.ext}`);
-          embeddedImg = await outDoc.embedPng(pngBytes);
+          embeddedImg = await outDoc.embedJpg(processed.bytes);
         }
 
         const imgWidth = embeddedImg.width;
@@ -405,11 +579,9 @@ async function runConversion() {
 
         let pageWidth, pageHeight;
         if (layoutSize === 'original') {
-          // 1:1 pixel perfection matching the image
           pageWidth = imgWidth;
           pageHeight = imgHeight;
         } else {
-          // Standard A4 or Letter
           const dims = PAGE_SIZES[layoutSize] || PAGE_SIZES.a4;
           let [w, h] = dims;
           if (layoutOrient === 'landscape' || (layoutOrient === 'auto' && imgWidth > imgHeight)) {
@@ -429,10 +601,15 @@ async function runConversion() {
         const availH = Math.max(10, pageHeight - margin * 2);
 
         let drawW, drawH;
-        if (layoutSize === 'original') {
+        if (layoutSize === 'original' && imgFit === 'original') {
           drawW = imgWidth;
           drawH = imgHeight;
+        } else if (imgFit === 'cover') {
+          const scale = Math.max(availW / imgWidth, availH / imgHeight);
+          drawW = imgWidth * scale;
+          drawH = imgHeight * scale;
         } else {
+          // contain (preserve aspect ratio)
           const scale = Math.min(availW / imgWidth, availH / imgHeight);
           drawW = imgWidth * scale;
           drawH = imgHeight * scale;
@@ -448,10 +625,118 @@ async function runConversion() {
           height: drawH,
         });
 
+        // Apply border if configured in Images tab
+        if (imgBorder === 'thin') {
+          page.drawRectangle({
+            x: drawX,
+            y: drawY,
+            width: drawW,
+            height: drawH,
+            borderColor: PDFLib.rgb(0.5, 0.5, 0.5),
+            borderWidth: 1,
+          });
+        } else if (imgBorder === 'medium') {
+          page.drawRectangle({
+            x: drawX,
+            y: drawY,
+            width: drawW,
+            height: drawH,
+            borderColor: PDFLib.rgb(0.2, 0.2, 0.2),
+            borderWidth: 2,
+          });
+        } else if (imgBorder === 'frame') {
+          page.drawRectangle({
+            x: Math.max(2, drawX - 3),
+            y: Math.max(2, drawY - 3),
+            width: drawW + 6,
+            height: drawH + 6,
+            borderColor: PDFLib.rgb(0.15, 0.15, 0.15),
+            borderWidth: 2.5,
+          });
+        }
+
         if (item.rotation) {
           page.setRotation(PDFLib.degrees(item.rotation));
         }
       }
+    }
+
+    // ── Apply Global View Rotation & Page Layout ───────────
+    if (viewRotate) {
+      for (let i = 0; i < outDoc.getPageCount(); i++) {
+        const p = outDoc.getPage(i);
+        const curRot = p.getRotation().angle;
+        p.setRotation(PDFLib.degrees((curRot + viewRotate) % 360));
+      }
+    }
+
+    if (pageMode === 'single') {
+      outDoc.catalog.set(PDFLib.PDFName.of('PageLayout'), PDFLib.PDFName.of('SinglePage'));
+    } else if (pageMode === 'facing') {
+      outDoc.catalog.set(PDFLib.PDFName.of('PageLayout'), PDFLib.PDFName.of('TwoColumnLeft'));
+    } else {
+      outDoc.catalog.set(PDFLib.PDFName.of('PageLayout'), PDFLib.PDFName.of('OneColumn'));
+    }
+
+    // ── Apply Header & Footer if configured ────────────────
+    const hfHeadLeft = $('#conv-hf-head-left')?.value.trim() || '';
+    const hfHeadCenter = $('#conv-hf-head-center')?.value.trim() || '';
+    const hfHeadRight = $('#conv-hf-head-right')?.value.trim() || '';
+    const hfFootLeft = $('#conv-hf-foot-left')?.value.trim() || '';
+    const hfFootCenter = $('#conv-hf-foot-center')?.value.trim() || '';
+    const hfFootRight = $('#conv-hf-foot-right')?.value.trim() || '';
+    const hfFontSize = parseInt($('#conv-hf-fontsize')?.value, 10) || 9;
+    const hfSkipFirst = $('#conv-hf-skip-first')?.checked || false;
+
+    const hasHf = hfHeadLeft || hfHeadCenter || hfHeadRight || hfFootLeft || hfFootCenter || hfFootRight;
+    if (hasHf) {
+      const { rgb, StandardFonts } = PDFLib;
+      const font = await outDoc.embedFont(StandardFonts.Helvetica);
+      const totalPages = outDoc.getPageCount();
+      const startIdx = hfSkipFirst ? 1 : 0;
+      const now = new Date().toLocaleDateString();
+
+      for (let i = startIdx; i < totalPages; i++) {
+        const p = outDoc.getPage(i);
+        const { width, height } = p.getSize();
+        const formatTxt = (t) => t
+          .replace(/\[page\]/gi, String(i + 1))
+          .replace(/\[total\]/gi, String(totalPages))
+          .replace(/\[date\]/gi, now)
+          .replace(/\[filename\]/gi, defaultFilename || 'Document');
+
+        // Header (top margin)
+        if (hfHeadLeft) p.drawText(formatTxt(hfHeadLeft), { x: 36, y: height - 24, size: hfFontSize, font, color: rgb(0.35, 0.35, 0.35) });
+        if (hfHeadCenter) {
+          const txt = formatTxt(hfHeadCenter);
+          const w = font.widthOfTextAtSize(txt, hfFontSize);
+          p.drawText(txt, { x: (width - w) / 2, y: height - 24, size: hfFontSize, font, color: rgb(0.35, 0.35, 0.35) });
+        }
+        if (hfHeadRight) {
+          const txt = formatTxt(hfHeadRight);
+          const w = font.widthOfTextAtSize(txt, hfFontSize);
+          p.drawText(txt, { x: width - w - 36, y: height - 24, size: hfFontSize, font, color: rgb(0.35, 0.35, 0.35) });
+        }
+
+        // Footer (bottom margin)
+        if (hfFootLeft) p.drawText(formatTxt(hfFootLeft), { x: 36, y: 18, size: hfFontSize, font, color: rgb(0.35, 0.35, 0.35) });
+        if (hfFootCenter) {
+          const txt = formatTxt(hfFootCenter);
+          const w = font.widthOfTextAtSize(txt, hfFontSize);
+          p.drawText(txt, { x: (width - w) / 2, y: 18, size: hfFontSize, font, color: rgb(0.35, 0.35, 0.35) });
+        }
+        if (hfFootRight) {
+          const txt = formatTxt(hfFootRight);
+          const w = font.widthOfTextAtSize(txt, hfFontSize);
+          p.drawText(txt, { x: width - w - 36, y: 18, size: hfFontSize, font, color: rgb(0.35, 0.35, 0.35) });
+        }
+      }
+    }
+
+    if (stripUnused) {
+      outDoc.setTitle(customName || 'Converted Document');
+      outDoc.setProducer('Eazy PDF Creator (Vidyasagar Academy)');
+      outDoc.setCreator('Eazy PDF Creator');
     }
 
     setProgress(85, 'Finalizing document structure…');

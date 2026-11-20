@@ -1,7 +1,7 @@
 {
   "name": "eazy-pdf-creator",
   "productName": "Eazy PDF Creator",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Eazy PDF Creator - Professional PDF Viewer, Editor & Lossless Creator by Vidyasagar Academy",
   "author": "Prof. Dattaraj S. Vidyasagar and Prof. Yash D. Vidyasagar (Vidyasagar Academy)",
   "license": "GPL-3.0-or-later",
@@ -31,6 +31,7 @@
     "files": [
       "src/**/*",
       "assets/**/*",
+      "build/icon.ico",
       "package.json",
       "node_modules/**/*"
     ],

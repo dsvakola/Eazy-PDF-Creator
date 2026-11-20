@@ -226,13 +226,193 @@
       <!-- Step 3: Options (Protection | Layout | Quality) -->
       <div id="conv-actions-bar" class="conv-options-box" hidden>
         <div class="conv-opt-tabs">
-          <button class="conv-opt-tab active" data-tab="protection">🔒 Protection</button>
+          <button class="conv-opt-tab active" data-tab="compression">🗜️ Compression</button>
+          <button class="conv-opt-tab" data-tab="view">👁️ View</button>
+          <button class="conv-opt-tab" data-tab="images">🖼️ Images</button>
+          <button class="conv-opt-tab" data-tab="protection">🔒 Protection</button>
+          <button class="conv-opt-tab" data-tab="headerfooter">📑 Header / footer</button>
+          <button class="conv-opt-tab" data-tab="excel">📊 Excel</button>
           <button class="conv-opt-tab" data-tab="layout">📐 Layout</button>
-          <button class="conv-opt-tab" data-tab="quality">💎 Quality</button>
+          <button class="conv-opt-tab" data-tab="optimization">⚡ Optimization</button>
         </div>
 
-        <!-- Protection Tab Pane -->
-        <div id="conv-pane-protection" class="conv-tab-pane">
+        <!-- 1. Compression Tab Pane -->
+        <div id="conv-pane-compression" class="conv-tab-pane">
+          <div class="conv-info-banner">
+            <span class="info-icon">ℹ️</span>
+            <span>The following preferences affect the compression of all images/graphics. The file size depends on the quality and resolution values. If you need a small file size, decrease the values.</span>
+          </div>
+
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Compression for PDF-to-PDF</strong>
+              <small>Should quality and resolution be retained as in the original?</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <label class="conv-chk-label">
+                <input type="checkbox" id="conv-opt-retain-orig" checked>
+                Retain original compression (Lossless)
+              </label>
+            </div>
+          </div>
+
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Quality of images</strong>
+              <small>The lower the quality, the smaller is the file size.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <select id="conv-opt-quality" class="conv-select">
+                <option value="1">1 - low quality</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5 - medium quality</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+                <option value="8" selected>8 - Standard, optimal quality</option>
+                <option value="9">9</option>
+                <option value="10">10 - high quality</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Resolution of images</strong>
+              <small>The lower the resolution, the smaller the file size.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <select id="conv-opt-dpi" class="conv-select">
+                <option value="25">25 dpi (lowest resolution)</option>
+                <option value="50">50 dpi</option>
+                <option value="72">72 dpi</option>
+                <option value="96">96 dpi (low resolution)</option>
+                <option value="120">120 dpi</option>
+                <option value="150">150 dpi (medium resolution)</option>
+                <option value="200">200 dpi</option>
+                <option value="250">250 dpi</option>
+                <option value="300" selected>300 dpi (Standard, optimal resolution)</option>
+                <option value="600">600 dpi (high resolution)</option>
+                <option value="1200">1200 dpi (best resolution)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Color / black-and-white</strong>
+              <small>Images in black-and-white reduce the file size additionally</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <select id="conv-opt-colormode" class="conv-select">
+                <option value="color" selected>Color</option>
+                <option value="gray">Gray scale</option>
+                <option value="mono">Black-and-White (monochrome)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. View Tab Pane -->
+        <div id="conv-pane-view" class="conv-tab-pane" hidden>
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Default Page Display</strong>
+              <small>How the document appears when opened in PDF viewers.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <select id="conv-view-pagemode" class="conv-select">
+                <option value="continuous" selected>Continuous scroll (standard)</option>
+                <option value="single">Single page view</option>
+                <option value="facing">Two pages facing (book spread)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Initial Magnification / Zoom</strong>
+              <small>Initial zoom level on document open.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <select id="conv-view-zoom" class="conv-select">
+                <option value="fit-width" selected>Fit to width</option>
+                <option value="fit-page">Fit entire page</option>
+                <option value="1.0">Actual size (100%)</option>
+                <option value="1.25">125%</option>
+                <option value="1.5">150%</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Page Orientation / Rotation</strong>
+              <small>Rotate all generated pages.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <select id="conv-view-rotate" class="conv-select">
+                <option value="0" selected>Original (no rotation)</option>
+                <option value="90">Rotate 90° clockwise</option>
+                <option value="180">Rotate 180°</option>
+                <option value="270">Rotate 270° counter-clockwise</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Images Tab Pane -->
+        <div id="conv-pane-images" class="conv-tab-pane" hidden>
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Images per page</strong>
+              <small>Arrange multiple input images onto single PDF pages.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <select id="conv-img-perpage" class="conv-select">
+                <option value="1" selected>1 image per page (default)</option>
+                <option value="2v">2 images per page (1×2 vertical)</option>
+                <option value="2h">2 images per page (2×1 horizontal)</option>
+                <option value="4">4 images per page (2×2 grid)</option>
+                <option value="6">6 images per page (2×3 grid)</option>
+                <option value="9">9 images per page (3×3 grid)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Image fitting mode</strong>
+              <small>How images scale inside the page area.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <select id="conv-img-fit" class="conv-select">
+                <option value="contain" selected>Fit to page (preserve aspect ratio)</option>
+                <option value="original">Original pixel dimensions</option>
+                <option value="cover">Fill page (cover entire page)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Border around images</strong>
+              <small>Add clean styling around photos/figures.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <select id="conv-img-border" class="conv-select">
+                <option value="none" selected>No border</option>
+                <option value="thin">Thin clean border (1 pt)</option>
+                <option value="medium">Medium border (2 pt)</option>
+                <option value="frame">Photo frame margin</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Protection Tab Pane -->
+        <div id="conv-pane-protection" class="conv-tab-pane" hidden>
           <div class="conv-opt-row">
             <input type="checkbox" id="conv-pt-open-chk" class="prot-chk">
             <label for="conv-pt-open-chk" class="prot-label">
@@ -256,40 +436,176 @@
           </div>
         </div>
 
-        <!-- Layout Tab Pane -->
-        <div id="conv-pane-layout" class="conv-tab-pane" hidden>
-          <div class="conv-form-row">
-            <label for="conv-opt-size">Page format:</label>
-            <select id="conv-opt-size">
-              <option value="original" selected>Original / Keep input dimensions (Lossless)</option>
-              <option value="a4">A4 (210 × 297 mm)</option>
-              <option value="letter">US Letter (8.5 × 11 in)</option>
-            </select>
+        <!-- 5. Header / Footer Tab Pane -->
+        <div id="conv-pane-headerfooter" class="conv-tab-pane" hidden>
+          <div class="conv-subheading">
+            <strong>Header Text (Top of page)</strong>
+            <small>Supported variables: [page] for current page number, [total] for total pages, [date] for current date.</small>
           </div>
-          <div class="conv-form-row">
-            <label for="conv-opt-orient">Orientation:</label>
-            <select id="conv-opt-orient">
-              <option value="auto" selected>Auto-detect (per image/page)</option>
-              <option value="portrait">Portrait</option>
-              <option value="landscape">Landscape</option>
-            </select>
+          <div class="conv-hf-grid">
+            <input type="text" id="conv-hf-head-left" placeholder="Header Left…">
+            <input type="text" id="conv-hf-head-center" placeholder="Header Center…">
+            <input type="text" id="conv-hf-head-right" placeholder="Header Right…">
           </div>
-          <div class="conv-form-row">
-            <label for="conv-opt-margin">Page margins:</label>
-            <select id="conv-opt-margin">
-              <option value="0" selected>None (0 mm) — edge to edge</option>
-              <option value="10">Small (10 mm)</option>
-              <option value="20">Standard (20 mm)</option>
-            </select>
+
+          <div class="conv-subheading" style="margin-top:14px;">
+            <strong>Footer Text (Bottom of page)</strong>
+            <small>e.g. "Page [page] of [total]" or "Vidyasagar Academy"</small>
+          </div>
+          <div class="conv-hf-grid">
+            <input type="text" id="conv-hf-foot-left" placeholder="Footer Left…">
+            <input type="text" id="conv-hf-foot-center" placeholder="Page [page] of [total]">
+            <input type="text" id="conv-hf-foot-right" placeholder="Footer Right…">
+          </div>
+
+          <div class="conv-setting-row" style="margin-top:14px;">
+            <div class="conv-setting-label">
+              <strong>Header / Footer font size</strong>
+              <small>Readable typography.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <select id="conv-hf-fontsize" class="conv-select">
+                <option value="8">8 pt</option>
+                <option value="9" selected>9 pt (Standard)</option>
+                <option value="10">10 pt</option>
+                <option value="12">12 pt</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>First page (Cover)</strong>
+              <small>Skip numbering on document title/cover page.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <label class="conv-chk-label">
+                <input type="checkbox" id="conv-hf-skip-first">
+                Do not show on first page
+              </label>
+            </div>
           </div>
         </div>
 
-        <!-- Quality Tab Pane -->
-        <div id="conv-pane-quality" class="conv-tab-pane" hidden>
-          <div class="conv-quality-card">
-            <div class="conv-quality-badge">✓ 100% LOSSLESS ACTIVE</div>
-            <h4>Original Quality Preservation</h4>
-            <p>Every vector font, curve, line, and image is copied bit-for-bit directly into the output document without re-rendering or compression artifacts. This produces crystal clear, high-resolution PDFs just like online2pdf.com.</p>
+        <!-- 6. Excel Tab Pane -->
+        <div id="conv-pane-excel" class="conv-tab-pane" hidden>
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Sheets to convert</strong>
+              <small>Choose whether to include all workbook tabs or first sheet.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <select id="conv-xl-sheets" class="conv-select">
+                <option value="all" selected>Convert all sheets in workbook</option>
+                <option value="first">Convert first sheet only</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Table width &amp; page fitting</strong>
+              <small>Prevent wide tables from breaking columns awkwardly.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <select id="conv-xl-fit" class="conv-select">
+                <option value="fit-width" selected>Fit sheet to 1 page wide (Landscape recommended)</option>
+                <option value="fit-page">Fit each sheet on 1 single page</option>
+                <option value="actual">Actual size (natural grid)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Gridlines &amp; Formatting</strong>
+              <small>Print cell outlines and table headers cleanly.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <label class="conv-chk-label"><input type="checkbox" id="conv-xl-gridlines" checked> Print table gridlines</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7. Layout Tab Pane -->
+        <div id="conv-pane-layout" class="conv-tab-pane" hidden>
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Page format / Paper size</strong>
+              <small>Target output dimensions.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <select id="conv-opt-size" class="conv-select">
+                <option value="original" selected>Original / Keep input dimensions (Lossless)</option>
+                <option value="a4">A4 (210 × 297 mm)</option>
+                <option value="letter">US Letter (8.5 × 11 in)</option>
+                <option value="legal">US Legal (8.5 × 14 in)</option>
+                <option value="a3">A3 (297 × 420 mm)</option>
+                <option value="a5">A5 (148 × 210 mm)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Orientation</strong>
+              <small>Page rotation profile.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <select id="conv-opt-orient" class="conv-select">
+                <option value="auto" selected>Auto-detect (per document/page)</option>
+                <option value="portrait">Portrait</option>
+                <option value="landscape">Landscape</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Page margins</strong>
+              <small>White spacing around edges.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <select id="conv-opt-margin" class="conv-select">
+                <option value="0" selected>None (0 mm) — edge to edge</option>
+                <option value="5">Small (5 mm)</option>
+                <option value="10">Standard (10 mm)</option>
+                <option value="20">Large (20 mm)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 8. Optimization Tab Pane -->
+        <div id="conv-pane-optimization" class="conv-tab-pane" hidden>
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Fast Web View (Linearization)</strong>
+              <small>Restructures internal cross-references so pages load instantly online.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <label class="conv-chk-label"><input type="checkbox" id="conv-opt-fastweb" checked> Enable Fast Web View</label>
+            </div>
+          </div>
+
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Streamline PDF Structure</strong>
+              <small>Strip duplicate fonts, redundant color spaces, and unused objects.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <label class="conv-chk-label"><input type="checkbox" id="conv-opt-strip-unused" checked> Remove unused objects &amp; metadata</label>
+            </div>
+          </div>
+
+          <div class="conv-setting-row">
+            <div class="conv-setting-label">
+              <strong>Auto-Contrast for Scanned Pages</strong>
+              <small>Improves legibility of faint or dark scanned documents.</small>
+            </div>
+            <div class="conv-setting-ctrl">
+              <label class="conv-chk-label"><input type="checkbox" id="conv-opt-autocontrast"> Enhance contrast for scanned pages</label>
+            </div>
           </div>
         </div>
 

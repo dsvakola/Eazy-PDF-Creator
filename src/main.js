@@ -7,7 +7,11 @@ const { convertFileToPdf } = require('./converter-engine');
 const path = require('path');
 const fs = require('fs');
 
-const ICON = path.join(__dirname, '..', 'assets', 'logo.png');
+const ICON = fs.existsSync(path.join(__dirname, '..', 'build', 'icon.ico'))
+  ? path.join(__dirname, '..', 'build', 'icon.ico')
+  : (fs.existsSync(path.join(__dirname, '..', 'assets', 'app-icon.png'))
+      ? path.join(__dirname, '..', 'assets', 'app-icon.png')
+      : path.join(__dirname, '..', 'assets', 'logo.png'));
 let win = null;
 let pendingFiles = [];
 
@@ -123,8 +127,8 @@ ipcMain.handle('open-converter-dialog', async () => {
   return r.canceled ? [] : r.filePaths;
 });
 
-ipcMain.handle('convert-to-pdf', async (_e, filePath) => {
-  return await convertFileToPdf(filePath);
+ipcMain.handle('convert-to-pdf', async (_e, filePath, options) => {
+  return await convertFileToPdf(filePath, options);
 });
 
 ipcMain.handle('read-file', async (_e, p) => {
