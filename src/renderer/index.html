@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Eazy PDF Creator</title>
+<link rel="stylesheet" href="lib/pdf_viewer.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="theme-light">
+<div id="app">
+
+  <!-- Desktop Menu Bar -->
+  <div id="menubar">
+    <div class="menu-item" data-menu="file">File
+      <div class="menu-dropdown" id="dropdown-file">
+        <div class="menu-action" id="ma-open"><span>Open PDF…</span><kbd>Ctrl+O</kbd></div>
+        <div class="menu-action" id="ma-open-converter"><span>Open Files for Conversion…</span></div>
+        <div class="menu-action" id="ma-recent"><span>Recent Files</span><span class="sub-arrow">▶</span></div>
+        <div class="menu-sep"></div>
+        <div class="menu-action" id="ma-save"><span>Save Annotated Copy…</span><kbd>Ctrl+S</kbd></div>
+        <div class="menu-action" id="ma-protect"><span>Protect &amp; Lock PDF…</span><kbd>Ctrl+Shift+S</kbd></div>
+        <div class="menu-sep"></div>
+        <div class="menu-action" id="ma-print"><span>Print…</span><kbd>Ctrl+P</kbd></div>
+        <div class="menu-sep"></div>
+        <div class="menu-action" id="ma-exit"><span>Exit</span><kbd>Alt+F4</kbd></div>
+      </div>
+    </div>
+
+    <div class="menu-item" data-menu="edit">Edit
+      <div class="menu-dropdown" id="dropdown-edit">
+        <div class="menu-action" id="ma-copy"><span>Copy Selected Text</span><kbd>Ctrl+C</kbd></div>
+        <div class="menu-sep"></div>
+        <div class="menu-action" id="ma-find"><span>Find in Document…</span><kbd>Ctrl+F</kbd></div>
+        <div class="menu-action" id="ma-find-next"><span>Find Next Match</span><kbd>F3</kbd></div>
+        <div class="menu-action" id="ma-goto"><span>Go to Page…</span><kbd>Ctrl+G</kbd></div>
+      </div>
+    </div>
+
+    <div class="menu-item" data-menu="view">View
+      <div class="menu-dropdown" id="dropdown-view">
+        <div class="menu-action" id="ma-mode-viewer"><span>📖 Viewer Mode</span></div>
+        <div class="menu-action" id="ma-mode-converter"><span>🔄 Converter Studio</span></div>
+        <div class="menu-sep"></div>
+        <div class="menu-action" id="ma-view-continuous"><span>Continuous Scroll</span></div>
+        <div class="menu-action" id="ma-view-single"><span>Single Page View</span></div>
+        <div class="menu-sep"></div>
+        <div class="menu-action" id="ma-fit-width"><span>Fit to Width</span><kbd>Ctrl+9</kbd></div>
+        <div class="menu-action" id="ma-fit-page"><span>Fit to Page</span><kbd>Ctrl+0</kbd></div>
+        <div class="menu-action" id="ma-actual-size"><span>Actual Size (100%)</span><kbd>Ctrl+1</kbd></div>
+        <div class="menu-action" id="ma-zoom-in"><span>Zoom In</span><kbd>Ctrl++</kbd></div>
+        <div class="menu-action" id="ma-zoom-out"><span>Zoom Out</span><kbd>Ctrl+-</kbd></div>
+        <div class="menu-sep"></div>
+        <div class="menu-action" id="ma-rotate-cw"><span>Rotate Clockwise</span><kbd>R</kbd></div>
+        <div class="menu-action" id="ma-rotate-ccw"><span>Rotate Counter-Clockwise</span><kbd>Shift+R</kbd></div>
+        <div class="menu-sep"></div>
+        <div class="menu-action" id="ma-sidebar"><span>Toggle Left Sidebar</span><kbd>F12</kbd></div>
+        <div class="menu-action" id="ma-fullscreen"><span>Presentation Mode</span><kbd>F5</kbd></div>
+        <div class="menu-sep"></div>
+        <div class="menu-action" id="ma-theme-cycle"><span>Cycle Theme (Light / Dark / Sepia)</span></div>
+      </div>
+    </div>
+
+    <div class="menu-item" data-menu="tools">Tools
+      <div class="menu-dropdown" id="dropdown-tools">
+        <div class="menu-action" id="ma-tool-protect"><span>🔒 Protect PDF (Password &amp; Permissions)…</span><kbd>Ctrl+Shift+S</kbd></div>
+        <div class="menu-action" id="ma-tool-convert"><span>🔄 Open Batch Converter Studio…</span></div>
+        <div class="menu-sep"></div>
+        <div class="menu-action" id="ma-tool-note"><span>✎ Add Sticky Note</span></div>
+        <div class="menu-action" id="ma-tool-highlight"><span>Highlight Selected Text</span></div>
+        <div class="menu-action" id="ma-tool-underline"><span>Underline Selected Text</span></div>
+        <div class="menu-sep"></div>
+        <div class="menu-action" id="ma-settings"><span>Settings…</span></div>
+      </div>
+    </div>
+
+    <div class="menu-item" data-menu="help">Help
+      <div class="menu-dropdown" id="dropdown-help">
+        <div class="menu-action" id="ma-shortcuts"><span>Keyboard Shortcuts Reference</span></div>
+        <div class="menu-action" id="ma-privacy"><span>Privacy Policy</span></div>
+        <div class="menu-action" id="ma-website"><span>Vidyasagar Academy Website</span></div>
+        <div class="menu-sep"></div>
+        <div class="menu-action" id="ma-about"><span>About Eazy PDF Creator…</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab bar -->
+  <div id="tabbar">
+    <img class="brand" src="../../assets/logo-small.png" alt="Vidyasagar Academy" title="Eazy PDF Creator">
+    <div id="mode-switch">
+      <button id="btn-mode-viewer" class="mode-btn active" title="View &amp; Annotate PDFs">📖 Viewer</button>
+      <button id="btn-mode-converter" class="mode-btn" title="Create, Merge &amp; Protect PDFs">🔄 Creator</button>
+    </div>
+    <div id="tabs"></div>
+    <button id="btn-newtab" class="tabbtn" title="Open PDF (Ctrl+O)">+</button>
+  </div>
+
+  <!-- Toolbar -->
+  <div id="toolbar">
+    <button id="btn-pane" class="tb" title="Show / hide left pane (F12)"></button>
+    <button id="btn-open" class="tb" title="Open PDF (Ctrl+O)"></button>
+    <button id="btn-recent" class="tb" title="Recent files"></button>
+    <span class="sep"></span>
+    <button id="btn-prev" class="tb" title="Previous page (Left arrow)"></button>
+    <input id="page-input" type="text" inputmode="numeric" value="" title="Go to page (Ctrl+G)">
+    <span id="page-total">/ 0</span>
+    <button id="btn-next" class="tb" title="Next page (Right arrow)"></button>
+    <span class="sep"></span>
+    <button id="btn-zoomout" class="tb" title="Zoom out (Ctrl + -)"></button>
+    <select id="zoom-select" title="Zoom">
+      <option value="fit-width">Fit width</option>
+      <option value="fit-page">Fit page</option>
+      <option value="custom" id="zoom-custom" hidden>100%</option>
+      <option value="0.5">50%</option><option value="0.75">75%</option>
+      <option value="1">100%</option><option value="1.25">125%</option>
+      <option value="1.5">150%</option><option value="2">200%</option>
+      <option value="3">300%</option><option value="4">400%</option>
+    </select>
+    <button id="btn-zoomin" class="tb" title="Zoom in (Ctrl + +)"></button>
+    <span class="sep"></span>
+    <button id="btn-rotate" class="tb" title="Rotate clockwise (R)"></button>
+    <button id="btn-viewmode" class="tb" title="Continuous / single page view"></button>
+    <span class="sep"></span>
+    <button id="btn-search" class="tb" title="Search (Ctrl+F)"></button>
+    <button id="btn-hl" class="tb" title="Highlight selected text"></button>
+    <button id="btn-ul" class="tb" title="Underline selected text"></button>
+    <button id="btn-note" class="tb" title="Add a sticky note (click on the page)"></button>
+    <span class="spacer"></span>
+    <button id="btn-theme" class="tb" title="Light / Dark / Sepia"></button>
+    <button id="btn-present" class="tb" title="Presentation mode (F5)"></button>
+    <button id="btn-print" class="tb" title="Print (Ctrl+P)"></button>
+    <button id="btn-save" class="tb" title="Save a copy with annotations"></button>
+    <button id="btn-protect" class="tb" title="Protect PDF — set password &amp; permissions (Ctrl+Shift+S)"></button>
+    <button id="btn-settings" class="tb" title="Settings"></button>
+    <button id="btn-about" class="tb" title="About Eazy PDF Creator"></button>
+  </div>
+
+  <!-- Search bar -->
+  <div id="searchbar" hidden>
+    <input id="search-input" type="text" placeholder="Find in this PDF...">
+    <button id="search-prev" class="tb small" title="Previous match (Shift+F3)"></button>
+    <button id="search-next" class="tb small" title="Next match (F3 / Enter)"></button>
+    <span id="search-count"></span>
+    <button id="search-close" class="tb small" title="Close (Esc)"></button>
+  </div>
+
+  <div id="main">
+    <div id="sidebar">
+      <div id="side-tabs">
+        <button data-side="thumbs" class="active">Pages</button>
+        <button data-side="outline">Contents</button>
+        <button data-side="notes">Notes</button>
+      </div>
+      <div id="side-body">
+        <div class="side-panel" id="panel-thumbs"></div>
+        <div class="side-panel" id="panel-outline" hidden></div>
+        <div class="side-panel" id="panel-notes" hidden></div>
+      </div>
+    </div>
+    <div id="viewer-wrap">
+      <div id="welcome">
+        <img src="../../assets/logo.png" alt="Vidyasagar Academy" class="welcome-logo">
+        <h1>Eazy PDF Creator</h1>
+        <p class="tagline">Fast, modern &amp; 100% lossless PDF Creator &amp; Viewer from Vidyasagar Academy</p>
+        <button id="welcome-open" class="primary">Open a PDF file</button>
+        <p class="hint">or drag and drop a PDF here</p>
+        <div id="recent-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Converter Studio View -->
+  <div id="converter-view" hidden>
+    <div class="conv-container">
+      <header class="conv-header">
+        <h1>Eazy PDF Creator</h1>
+        <p class="conv-tagline">100% Lossless creation, merging, and protection for documents &amp; images</p>
+      </header>
+
+      <!-- Step 1: Drop Area -->
+      <div id="conv-drop-area" class="conv-dropzone">
+        <div class="conv-drop-content">
+          <div class="conv-drop-icon">📄 ➔ 📕</div>
+          <h3>Select or Drop files here</h3>
+          <p class="conv-drop-hint">Combine PDFs and images into a single clean PDF without losing quality</p>
+          <button id="conv-browse-btn" class="primary conv-btn-select">Select Files</button>
+          <div class="conv-formats">
+            <span>PDF</span>
+            <span>JPG / JPEG</span>
+            <span>PNG</span>
+            <span>WebP</span>
+            <span>BMP</span>
+            <span>GIF</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2: File Queue -->
+      <div id="conv-queue-section">
+        <div class="conv-queue-header">
+          <h3>Files to convert <span id="conv-queue-count" class="conv-pill">0 files</span></h3>
+          <div class="conv-queue-actions">
+            <button id="conv-add-more-btn" class="tb-btn small">+ Add More Files</button>
+            <button id="conv-clear-all-btn" class="tb-btn small danger">Clear All</button>
+          </div>
+        </div>
+
+        <div id="conv-empty-state" class="conv-empty-queue">
+          No files added yet. Drop files above to begin.
+        </div>
+        <div id="conv-file-list" class="conv-card-list"></div>
+      </div>
+
+      <!-- Step 3: Options (Protection | Layout | Quality) -->
+      <div id="conv-actions-bar" class="conv-options-box" hidden>
+        <div class="conv-opt-tabs">
+          <button class="conv-opt-tab active" data-tab="protection">🔒 Protection</button>
+          <button class="conv-opt-tab" data-tab="layout">📐 Layout</button>
+          <button class="conv-opt-tab" data-tab="quality">💎 Quality</button>
+        </div>
+
+        <!-- Protection Tab Pane -->
+        <div id="conv-pane-protection" class="conv-tab-pane">
+          <div class="conv-opt-row">
+            <input type="checkbox" id="conv-pt-open-chk" class="prot-chk">
+            <label for="conv-pt-open-chk" class="prot-label">
+              <strong>Create password for opening</strong>
+              <small>Anyone who opens the file will be required to enter this password.</small>
+            </label>
+          </div>
+          <div id="conv-pt-open-wrap" class="conv-pw-grid" hidden>
+            <input type="password" id="conv-pt-open-pw" placeholder="Enter password…" autocomplete="new-password">
+            <input type="password" id="conv-pt-open-pw2" placeholder="Confirm password…" autocomplete="new-password">
+          </div>
+
+          <div class="conv-subheading">
+            <strong>Security options</strong>
+            <small>Printing, editing and/or copying can be locked separately.</small>
+          </div>
+          <div class="conv-locks-grid">
+            <label class="conv-lock-item"><input type="checkbox" id="conv-pt-print"> Lock printing</label>
+            <label class="conv-lock-item"><input type="checkbox" id="conv-pt-copy"> Lock copying</label>
+            <label class="conv-lock-item"><input type="checkbox" id="conv-pt-modify"> Lock modifying</label>
+          </div>
+        </div>
+
+        <!-- Layout Tab Pane -->
+        <div id="conv-pane-layout" class="conv-tab-pane" hidden>
+          <div class="conv-form-row">
+            <label for="conv-opt-size">Page format:</label>
+            <select id="conv-opt-size">
+              <option value="original" selected>Original / Keep input dimensions (Lossless)</option>
+              <option value="a4">A4 (210 × 297 mm)</option>
+              <option value="letter">US Letter (8.5 × 11 in)</option>
+            </select>
+          </div>
+          <div class="conv-form-row">
+            <label for="conv-opt-orient">Orientation:</label>
+            <select id="conv-opt-orient">
+              <option value="auto" selected>Auto-detect (per image/page)</option>
+              <option value="portrait">Portrait</option>
+              <option value="landscape">Landscape</option>
+            </select>
+          </div>
+          <div class="conv-form-row">
+            <label for="conv-opt-margin">Page margins:</label>
+            <select id="conv-opt-margin">
+              <option value="0" selected>None (0 mm) — edge to edge</option>
+              <option value="10">Small (10 mm)</option>
+              <option value="20">Standard (20 mm)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Quality Tab Pane -->
+        <div id="conv-pane-quality" class="conv-tab-pane" hidden>
+          <div class="conv-quality-card">
+            <div class="conv-quality-badge">✓ 100% LOSSLESS ACTIVE</div>
+            <h4>Original Quality Preservation</h4>
+            <p>Every vector font, curve, line, and image is copied bit-for-bit directly into the output document without re-rendering or compression artifacts. This produces crystal clear, high-resolution PDFs just like online2pdf.com.</p>
+          </div>
+        </div>
+
+        <!-- Execute / Convert Footer -->
+        <div class="conv-convert-footer">
+          <div class="conv-filename-box">
+            <label for="conv-output-name">Output filename:</label>
+            <input type="text" id="conv-output-name" placeholder="Converted Document.pdf">
+          </div>
+          <button id="conv-execute-btn" class="conv-btn-convert">
+            🚀 Convert to PDF
+          </button>
+        </div>
+
+        <!-- Live Progress Box -->
+        <div id="conv-progress-box" class="conv-progress-container" hidden>
+          <div class="conv-progress-track">
+            <div id="conv-progress-fill" class="conv-progress-bar" style="width: 0%"></div>
+          </div>
+          <span id="conv-progress-text" class="conv-progress-label">Preparing…</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="dropzone" hidden><div>Drop PDF files to open</div></div>
+<div id="toast" hidden></div>
+<div id="menu" hidden></div>
+
+<!-- Floating popup shown after selecting text -->
+<div id="selpop" hidden>
+  <button data-color="#ffe14d" class="sw" style="background:#ffe14d" title="Highlight yellow"></button>
+  <button data-color="#7ee06a" class="sw" style="background:#7ee06a" title="Highlight green"></button>
+  <button data-color="#ff9ecb" class="sw" style="background:#ff9ecb" title="Highlight pink"></button>
+  <button data-color="#7cc7ff" class="sw" style="background:#7cc7ff" title="Highlight blue"></button>
+  <button id="selpop-ul" class="pbtn" title="Underline">U</button>
+  <button id="selpop-note" class="pbtn" title="Add note">Note</button>
+</div>
+
+<!-- Modals -->
+<div id="modal-back" hidden>
+  <div id="modal"></div>
+</div>
+
+<div id="printContainer"></div>
+
+<script src="lib/pdf.min.js"></script>
+<script src="lib/pdf-lib.min.js"></script>
+<script src="core.js"></script>
+<script src="viewer.js"></script>
+<script src="features.js"></script>
+<script src="converter.js"></script>
+<script src="menubar.js"></script>
+<script src="ui.js"></script>
+</body>
+</html>

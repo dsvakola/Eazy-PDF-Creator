@@ -1,0 +1,87 @@
+{
+  "name": "eazy-pdf-creator",
+  "productName": "Eazy PDF Creator",
+  "version": "1.2.0",
+  "description": "Eazy PDF Creator - Professional PDF Viewer, Editor & Lossless Creator by Vidyasagar Academy",
+  "author": "Prof. Dattaraj S. Vidyasagar and Prof. Yash D. Vidyasagar (Vidyasagar Academy)",
+  "license": "GPL-3.0-or-later",
+  "packageManager": "pnpm@12.21.0",
+  "main": "src/main.js",
+  "scripts": {
+    "postinstall": "node scripts/copy-libs.js",
+    "start": "electron .",
+    "dist": "node scripts/copy-libs.js && electron-builder --win",
+    "dist:portable": "node scripts/copy-libs.js && electron-builder --win portable",
+    "dist:setup": "node scripts/copy-libs.js && electron-builder --win nsis",
+    "dist:appx": "node scripts/copy-libs.js && electron-builder --win appx"
+  },
+  "devDependencies": {
+    "electron": "33.4.11",
+    "electron-builder": "^26.0.0",
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "3.11.174"
+  },
+  "build": {
+    "appId": "in.edu.vsa.eazypdfcreator",
+    "productName": "Eazy PDF Creator",
+    "copyright": "Copyright \u00a9 2026 Vidyasagar Academy. Developed by Prof. Dattaraj S. Vidyasagar and Prof. Yash D. Vidyasagar. Free software under GPL.",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "fileAssociations": [
+        {
+          "ext": "pdf",
+          "name": "PDF Document",
+          "description": "PDF Document",
+          "icon": "build/icon.ico",
+          "role": "Viewer"
+        }
+      ]
+    },
+    "portable": {
+      "artifactName": "${productName} Portable ${version}.${ext}"
+    },
+    "nsis": {
+      "artifactName": "${productName} Setup ${version}.${ext}",
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Eazy PDF Creator",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
+    },
+    "appx": {
+      "applicationId": "VidyasagarAcademy.EazyPDFCreator",
+      "identityName": "VidyasagarAcademy.EazyPDFCreator",
+      "publisher": "CN=E5EAB892-17BA-4AC0-A205-3AE9F2BA13DD",
+      "publisherDisplayName": "Vidyasagar Academy"
+    },
+    "asarUnpack": [
+      "src/renderer/lib/**/*"
+    ]
+  }
+}
