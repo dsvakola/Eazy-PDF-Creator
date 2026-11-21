@@ -31,5 +31,5 @@ If you have questions or feedback regarding this Privacy Policy or Eazy PDF Crea
 
 **Vidyasagar Academy**  
 Website: [https://www.vsa.edu.in](https://www.vsa.edu.in)  
-Email: [info@vsa.edu.in](mailto:info@vsa.edu.in)  
+Email: [softinquiry@vsa.edu.in](mailto:softinquiry@vsa.edu.in)  
 Akola, Maharashtra, India  
